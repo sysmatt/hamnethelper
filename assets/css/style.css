@@ -1,0 +1,273 @@
+:root {
+  --bg: #1b1e24;
+  --bg-elevated: #242832;
+  --text: #e6e8ec;
+  --text-muted: #9aa1ac;
+  --border: #343a46;
+  --accent: #4f8cff;
+  --danger: #e15554;
+  --success: #4caf6d;
+  --warning: #e0a63a;
+}
+
+:root[data-theme="light"] {
+  --bg: #f7f8fa;
+  --bg-elevated: #ffffff;
+  --text: #1b1e24;
+  --text-muted: #5b6270;
+  --border: #d8dbe0;
+  --accent: #2563eb;
+  --danger: #c0392b;
+  --success: #2e8b57;
+  --warning: #b8860b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header h1 {
+  font-size: 1.1rem;
+  margin: 0;
+  flex: 1;
+}
+
+.back-link {
+  color: var(--text-muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-label,
+.muted {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+main {
+  padding: 1.25rem;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.toolbar {
+  margin-bottom: 1rem;
+}
+
+table.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+tr.checked-out {
+  opacity: 0.5;
+}
+
+.drag-handle {
+  cursor: grab;
+}
+
+.save-indicator {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.save-indicator.saving {
+  color: var(--warning);
+}
+
+.save-indicator.failed {
+  color: var(--danger);
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.save-indicator.saved {
+  color: var(--success);
+}
+
+body.net-closed .lookup-bar,
+body.net-closed .checkin-table,
+body.net-closed #script-notes,
+body.net-closed .data-table button,
+body.net-closed .data-table input {
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.lookup-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.lookup-bar input[type="text"] {
+  flex: 1;
+  min-width: 12rem;
+  padding: 0.45rem 0.6rem;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+#script-notes {
+  width: 100%;
+  min-height: 8rem;
+  margin-bottom: 1.25rem;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-family: inherit;
+}
+
+.name-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+}
+
+.notes-cell input {
+  width: 100%;
+  padding: 0.3rem;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+dialog {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1.25rem;
+  max-width: 28rem;
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+dialog h2 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+dialog label {
+  display: block;
+  margin-bottom: 0.6rem;
+  font-size: 0.9rem;
+}
+
+dialog input,
+dialog select,
+dialog textarea {
+  width: 100%;
+  padding: 0.4rem;
+  margin-top: 0.2rem;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: inherit;
+}
+
+dialog menu {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+}
+
+button {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+button.danger {
+  background: var(--danger);
+}
+
+.actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.actions a {
+  font-size: 0.85rem;
+  color: var(--accent);
+}
+
+td.loading,
+td.empty,
+td.error {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 1.5rem;
+}
+
+td.error {
+  color: var(--danger);
+}

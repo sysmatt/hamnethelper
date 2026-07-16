@@ -1,0 +1,57 @@
+<?php
+// Copy this file to hamnethelper-config.php in the docroot, ONE LEVEL ABOVE the hamnethelper/
+// directory. Example: if hamnethelper is cloned to /var/www/html/hamnethelper/, place this file
+// at /var/www/html/hamnethelper-config.php
+//
+// This keeps your server-specific config outside the git repo so shallow clones/pulls never
+// overwrite it. Any key you omit falls back to the default in lib/config.php.
+//
+// This file must `return` a plain associative array (no defines, no output) — see lib/config.php.
+
+return [
+
+    // --- Paths & hamdat integration -----------------------------------------------------------
+
+    // Full path to the hamdat binary (used for the second-level lookup, see SPEC.md §3.3)
+    'hamdat_bin' => '/usr/local/bin/hamdat',
+
+    // Full path to the hamdat SQLite database
+    'hamdat_db' => '/home/ubuntu/.hamdat/hamdat.db',
+
+    // Directory where net JSON files are stored. MUST be outside the docroot and writable by
+    // the web server user (e.g. www-data). See SPEC.md §2.
+    'nets_dir' => '/var/lib/hamnethelper/nets',
+
+    // --- Branding ------------------------------------------------------------------------------
+
+    'app_name' => 'HamNetHelper',
+
+    // --- Net types -------------------------------------------------------------------------
+    // Shown as a dropdown on the net creation form (SPEC.md §4). Add/remove/rename entries here
+    // with no code changes required — 'value' is what's stored in each net's JSON file, 'label'
+    // is what the operator sees.
+
+    'net_types' => [
+        ['value' => 'weekly',  'label' => 'Weekly'],
+        ['value' => 'ares',    'label' => 'Emergency / ARES'],
+        ['value' => 'drill',   'label' => 'Drill / Training'],
+        ['value' => 'special', 'label' => 'Special Event'],
+        ['value' => 'other',   'label' => 'Other'],
+    ],
+
+    // --- Behavior tuning -------------------------------------------------------------------
+
+    // Default radius (miles) pre-filled in the HAMDAT Lookup Settings dialog for new nets.
+    'default_hamdat_radius_miles' => 25,
+
+    // How long (ms) the browser waits after the last edit before autosaving (SPEC.md §2).
+    'autosave_debounce_ms' => 800,
+
+    // Max size (bytes) accepted for an uploaded participant-list text file.
+    'roster_upload_max_bytes' => 65536,
+
+    // 'dark' or 'light' — the theme shown before the operator's own localStorage preference
+    // (if any) is applied.
+    'default_theme' => 'dark',
+
+];

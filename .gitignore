@@ -1,0 +1,6 @@
+# The live config lives in the docroot parent directory (../hamnethelper-config.php),
+# not inside this repo, so there is nothing to ignore here for it.
+# See hamnethelper-config.php.example for the template.
+
+.DS_Store
+*.swp
