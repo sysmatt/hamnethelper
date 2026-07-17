@@ -51,7 +51,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     saveInFlight = true;
     setIndicator('saving');
     try {
-      net = await HNH.api('api/net_save.php', { method: 'POST', body: JSON.stringify(net) });
+      // Patch only the server-computed field back in -- never wholesale-replace `net` with the
+      // response. The request body is a snapshot of `net` at the moment fetch() was called, but
+      // `net` itself keeps getting mutated in place by further clicks/edits while this request is
+      // in flight (that's the whole point of it being the same object reference). Reassigning
+      // `net = <response>` here would silently discard any of those in-flight mutations the
+      // instant this promise resolves -- which is exactly what caused check-ins to "un-73"
+      // themselves when another row was touched while a save was still in progress.
+      var response = await HNH.api('api/net_save.php', { method: 'POST', body: JSON.stringify(net) });
+      net.updated_at = response.updated_at;
       setIndicator('saved');
     } catch (err) {
       setIndicator('failed');
