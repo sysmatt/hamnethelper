@@ -193,6 +193,12 @@ body.net-closed .script-notes-panel {
   white-space: nowrap;
 }
 
+.suggestion-left {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
 .suggestions li .callsign {
   font-weight: 600;
 }
@@ -213,6 +219,30 @@ body.net-closed .script-notes-panel {
 .suggestions li:hover .detail,
 .suggestions li.active .detail {
   color: rgba(255, 255, 255, 0.85);
+}
+
+/* Roster members (the "expected to check into this net" list) get a left accent + badge so
+   they're easy to spot at a glance, distinct from hamdat-only matches -- see SPEC.md §5.1. */
+.suggestions li.in-roster {
+  box-shadow: inset 3px 0 0 var(--success);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+}
+
+.suggestions li.in-roster:hover,
+.suggestions li.in-roster.active {
+  background: var(--accent);
+}
+
+.roster-badge {
+  flex-shrink: 0;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--success);
+  color: #06210f;
 }
 
 .workspace {

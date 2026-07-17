@@ -235,11 +235,17 @@ keeps net list data consistent for any future filtering/reporting by type).
 - **Callsign/name lookup box** — single text input. As the operator types, live-filters against
   roster (level-1) merged with hamdat cache (level-2) — matches ranked exact callsign > callsign
   prefix > callsign substring > name substring (hamdat entries only; the roster carries no name
-  data). Shows up to 8 ranked results in a dropdown, first one highlighted by default. Arrow
-  keys move the highlight, Enter selects the highlighted suggestion (or, if the dropdown has no
-  matches, adds a row with just the typed callsign and no `name` — the visitor/unlisted-station
-  case; the operator can still set a `preferred_name` via the pencil icon, §5.2). Escape closes
-  the dropdown without clearing the typed text.
+  data), and **within each of those tiers, roster members sort ahead of hamdat-only matches** —
+  the roster is the "expected to check into this net" list, so those calls should be the easiest
+  to spot rather than however a text-match tiebreak happens to land. (An exact callsign match
+  still wins outright regardless of roster status — typing the full call is effectively
+  confirming identity either way.) Roster matches are also visually distinct in the dropdown: a
+  green "★ Roster" badge and a tinted/accented row, shown whenever a callsign is on the roster
+  even if it also matched via the hamdat cache. Shows up to 8 ranked results in a dropdown, first
+  one highlighted by default. Arrow keys move the highlight, Enter selects the highlighted
+  suggestion (or, if the dropdown has no matches, adds a row with just the typed callsign and no
+  `name` — the visitor/unlisted-station case; the operator can still set a `preferred_name` via
+  the pencil icon, §5.2). Escape closes the dropdown without clearing the typed text.
   - **Global "/" shortcut**: pressing `/` anywhere on the page (when focus isn't already in a
     text field, including the Script & Notes editor) refocuses this box, select-all, so the
     operator can jump back to it without reaching for the mouse.

@@ -375,7 +375,11 @@ document.addEventListener('DOMContentLoaded', async function () {
   }
 
   // Match priority: exact callsign > callsign prefix > callsign substring > name substring.
-  // Lower score wins; ties broken alphabetically by callsign.
+  // Within that, roster members sort ahead of hamdat-only matches at the same tier -- the
+  // roster is the "expected to check into this net" list, so those calls should be the easiest
+  // to spot, not just whichever text-matched marginally better. An exact callsign match still
+  // wins outright regardless of roster status, since typing the full call is effectively
+  // confirming identity either way.
   function filterCandidates(query) {
     var q = query.trim().toUpperCase();
     if (!q) {
@@ -400,7 +404,15 @@ document.addEventListener('DOMContentLoaded', async function () {
         return copy;
       })
       .filter(Boolean)
-      .sort(function (a, b) { return a.score - b.score || a.callsign.localeCompare(b.callsign); })
+      .sort(function (a, b) {
+        if (a.score !== b.score) {
+          return a.score - b.score;
+        }
+        if (a.inRoster !== b.inRoster) {
+          return a.inRoster ? -1 : 1;
+        }
+        return a.callsign.localeCompare(b.callsign);
+      })
       .slice(0, 8);
   }
 
@@ -416,20 +428,32 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     list.forEach(function (c, idx) {
       var li = document.createElement('li');
-      li.className = idx === activeIndex ? 'active' : '';
+      li.className = (idx === activeIndex ? 'active' : '') + (c.inRoster ? ' in-roster' : '');
+
+      var leftGroup = document.createElement('span');
+      leftGroup.className = 'suggestion-left';
 
       var callsignSpan = document.createElement('span');
       callsignSpan.className = 'callsign';
       callsignSpan.textContent = c.callsign;
-      li.appendChild(callsignSpan);
+      leftGroup.appendChild(callsignSpan);
+
+      // Roster membership is shown regardless of whether hamdat also matched this callsign --
+      // it's the "expected to check into this net" signal, always worth surfacing on its own.
+      if (c.inRoster) {
+        var badge = document.createElement('span');
+        badge.className = 'roster-badge';
+        badge.textContent = '★ Roster';
+        leftGroup.appendChild(badge);
+      }
+
+      li.appendChild(leftGroup);
 
       var detailSpan = document.createElement('span');
       detailSpan.className = 'detail';
       if (c.name) {
         var where = [c.city, c.state].filter(Boolean).join(', ');
         detailSpan.textContent = c.name + (where ? ' — ' + where : '');
-      } else if (c.inRoster) {
-        detailSpan.textContent = 'on roster';
       }
       li.appendChild(detailSpan);
 
