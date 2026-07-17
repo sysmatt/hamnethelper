@@ -301,8 +301,9 @@ body.net-closed .script-notes-panel {
   font-family: inherit;
 }
 
-/* EasyMDE replaces the textarea with its own container -- keep it within the shrunk panel */
-.script-notes-panel .EasyMDEContainer {
+/* Vditor mounts into this sibling div (the plain #script-notes textarea is hidden once it
+   initializes -- see net.js's initScriptNotesEditor()) -- keep it within the shrunk side panel. */
+#vditor-script-notes {
   width: 100%;
 }
 

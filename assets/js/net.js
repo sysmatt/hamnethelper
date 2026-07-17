@@ -21,7 +21,8 @@ document.addEventListener('DOMContentLoaded', async function () {
   var hamdatCloseBtn = document.getElementById('hamdat-close');
 
   var net = null;
-  var mde = null;
+  var vditorInstance = null;
+  var vditorReady = false;
   var sortable = null;
   var saveTimer = null;
   var saveDebounceMs = 800;
@@ -98,9 +99,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     closeReopenBtn.textContent = net.status === 'closed' ? 'Re-open Net' : 'Close Net';
     document.body.classList.toggle('net-closed', net.status === 'closed');
 
-    if (mde) {
-      mde.value(net.script_notes || '');
-    } else {
+    // script_notes only ever changes via the editor's own `input` callback below, so the
+    // constructor's initial `value` handles the normal case -- this is just a defensive resync
+    // for the (currently never exercised) case of something else changing it externally, guarded
+    // so it can't stomp on an in-progress edit/cursor position by calling setValue needlessly.
+    if (vditorInstance && vditorReady) {
+      if (vditorInstance.getValue() !== (net.script_notes || '')) {
+        vditorInstance.setValue(net.script_notes || '', true);
+      }
+    } else if (!vditorInstance) {
       scriptNotesEl.value = net.script_notes || '';
     }
 
@@ -300,7 +307,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   // --- Script & Notes (SPEC.md §5.3) ------------------------------------------------------
 
   function initScriptNotesEditor() {
-    if (typeof EasyMDE === 'undefined') {
+    if (typeof Vditor === 'undefined') {
       // Vendor asset missing -- fall back to the plain textarea already in the page.
       scriptNotesEl.addEventListener('input', function () {
         net.script_notes = scriptNotesEl.value;
@@ -308,16 +315,44 @@ document.addEventListener('DOMContentLoaded', async function () {
       });
       return;
     }
-    mde = new EasyMDE({
-      element: scriptNotesEl,
-      spellChecker: false,
-      status: false,
-      minHeight: '150px', // narrow side panel (see .script-notes-panel) -- keep it compact
-      toolbar: ['bold', 'italic', 'heading', '|', 'unordered-list', 'ordered-list', '|', 'preview'],
-    });
-    mde.codemirror.on('change', function () {
-      net.script_notes = mde.value();
-      scheduleSave();
+
+    // Vditor mounts its own UI into a separate element rather than replacing the textarea in
+    // place (unlike EasyMDE) -- hide the plain textarea and mount into its sibling div instead.
+    scriptNotesEl.hidden = true;
+    var mountEl = document.getElementById('vditor-script-notes');
+
+    var isLight = document.documentElement.getAttribute('data-theme') === 'light';
+
+    vditorInstance = new Vditor(mountEl, {
+      mode: 'ir', // instant-render, Typora-style -- type markdown, see it formatted in place,
+      // no separate edit/preview mode to flip between (SPEC.md §5.3).
+      value: net.script_notes || '',
+      height: 260,
+      minHeight: 150,
+      placeholder: 'Welcome script, announcements, running notes…',
+      cdn: 'assets/vendor/vditor', // local vendored copy -- see assets/vendor/vditor/VERSIONS.md
+      icon: 'material',
+      lang: 'en_US',
+      // `theme` (toolbar chrome) and `preview.theme.current` (rendered content text color) are
+      // two completely independent settings in Vditor -- the latter defaults to "light"
+      // regardless of `theme`, which on our dark background renders heading/paragraph text the
+      // same color as its own background (invisible). Both must be set explicitly.
+      theme: isLight ? 'classic' : 'dark',
+      preview: {
+        theme: {
+          current: isLight ? 'light' : 'dark',
+        },
+      },
+      cache: { enable: false }, // we handle persistence ourselves via autosave; don't let
+      // Vditor's own localStorage caching offer to restore stale content on reopen.
+      toolbar: ['headings', 'bold', 'italic', 'list', 'ordered-list', '|', 'undo', 'redo'],
+      after: function () {
+        vditorReady = true;
+      },
+      input: function (value) {
+        net.script_notes = value;
+        scheduleSave();
+      },
     });
   }
 
@@ -627,8 +662,9 @@ document.addEventListener('DOMContentLoaded', async function () {
   });
 
   // Press "/" anywhere on the page to jump back to the lookup box, unless the operator is
-  // already typing in some other field (including the EasyMDE/CodeMirror editor, which reports
-  // its focused element as a plain TEXTAREA).
+  // already typing in some other field -- including the Script & Notes editor, which is a
+  // contenteditable div (Vditor's "ir" mode) rather than a textarea, hence the isContentEditable
+  // check below rather than relying on tagName alone.
   document.addEventListener('keydown', function (e) {
     if (e.key !== '/') {
       return;

@@ -352,11 +352,31 @@ through the lookup box, not in-place correction.
 
 ### 5.3 Script & Notes editor
 
-Backed by `script_notes` (markdown source, net-wide, autosaved same as everything else). Default
-plan: [EasyMDE](https://github.com/Ionaru/easy-markdown-editor) — a single vendored JS + CSS file,
-no build step, drops onto a `<textarea>`. Gives a formatting toolbar and a built-in preview toggle
-without any backend involvement; the underlying `<textarea>` value (raw markdown) is what gets
-saved. Low-risk to swap for a plain `<textarea>` later if it turns out to be more than needed.
+Backed by `script_notes` (markdown source, net-wide, autosaved same as everything else).
+
+Originally [EasyMDE](https://github.com/Ionaru/easy-markdown-editor), replaced with
+[Vditor](https://github.com/Vanessa219/vditor) after user testing found EasyMDE's edit/preview
+toggle clunky — flipping between raw markdown and a separate, non-editable rendered view didn't
+feel like a normal editor. Vditor's **"ir" (instant-render) mode** renders formatting inline as you
+type — `**bold**` becomes actual bold text in place, no separate preview pane or mode switch at
+all, much closer to Typora/Notion than a classic markdown-plus-preview split. Still backed by
+plain markdown text (`script_notes` itself, the plain-text Report download, and the JSON export
+are all unaffected by this swap — only the editing *experience* changed, not the storage format).
+
+Vendored (not npm-installed — no build step, per this project's convention) at pinned version
+3.11.2. Notably heavier than EasyMDE (~4.4 MB vs ~326 KB, see `assets/vendor/VERSIONS.md` for the
+full breakdown) — the vast majority of that is Vditor's underlying "Lute" markdown engine, which
+instant-render mode requires outright, not an optional extra. Judged acceptable for an internal
+ops tool (one-time cached download, not a public/mobile-data-sensitive page). Only the subset
+needed for the "ir" mode itself was vendored — Vditor's optional lazy-loaded renderers for math
+(KaTeX/MathJax), diagrams (Mermaid/Graphviz/PlantUML/flowchart.js), charts (ECharts), music
+notation (ABCJS), and chemistry (SMILES) were deliberately left out, since net notes will never
+need them; if that syntax ever appears in notes, the relevant renderer 404s gracefully rather than
+crashing (falls back to a plain code block).
+
+Falls back to a plain `<textarea>` if the vendor asset is missing (same as the EasyMDE-era
+fallback behavior) — low-risk either way, since the storage format never depended on which editor
+was in front of it.
 
 ### 5.4 Other interaction notes
 

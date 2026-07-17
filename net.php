@@ -24,7 +24,7 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $netId)) {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= htmlspecialchars($config['app_name']) ?> — Net</title>
 <link rel="stylesheet" href="assets/css/style.css">
-<link rel="stylesheet" href="assets/vendor/easymde.min.css">
+<link rel="stylesheet" href="assets/vendor/vditor/vditor.min.css">
 </head>
 <body data-net-id="<?= htmlspecialchars($netId) ?>">
 
@@ -53,6 +53,7 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $netId)) {
     <section class="script-notes-panel">
       <h2>Script &amp; Notes</h2>
       <textarea id="script-notes" placeholder="Welcome script, announcements, running notes&hellip;"></textarea>
+      <div id="vditor-script-notes"></div>
     </section>
 
     <section class="checkin-panel">
@@ -96,7 +97,7 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $netId)) {
 
 <script>window.HNH_CONFIG_URL = 'api/config.php';</script>
 <script src="assets/vendor/sortable.min.js"></script>
-<script src="assets/vendor/easymde.min.js"></script>
+<script src="assets/vendor/vditor/vditor.min.js"></script>
 <script src="assets/js/api.js"></script>
 <script src="assets/js/theme.js"></script>
 <script src="assets/js/net.js"></script>
