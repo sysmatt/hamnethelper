@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       tr.innerHTML =
         '<td class="drag-handle">' + (idx + 1) + '</td>' +
         '<td>' + HNH.escapeHtml(c.callsign) + '</td>' +
-        '<td class="name-cell"></td>' +
+        '<td><span class="name-cell"></span></td>' +
         '<td>' + HNH.escapeHtml(c.city || '') + '</td>' +
         '<td>' + HNH.escapeHtml(c.state || '') + '</td>' +
         '<td>' + formatTime(c.checked_in_at) + '</td>' +
