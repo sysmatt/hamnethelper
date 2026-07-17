@@ -162,6 +162,42 @@ document.addEventListener('DOMContentLoaded', async function () {
     window.location.href = 'net.php?id=' + encodeURIComponent(net.id);
   });
 
+  // Click anywhere in a row that isn't itself an interactive element (link/button/the download
+  // menu's summary) opens that net -- attached once, via delegation, so it survives tbody being
+  // rewritten on every loadNets() call. The Name cell is a real <a> (see below), so normal
+  // left-clicks there navigate on their own and this handler just no-ops for that case (checked
+  // via closest('a, button, summary')) -- native ctrl/middle-click-to-new-tab still works on the
+  // Name link specifically, since the browser handles that before/instead of our click handler.
+  tbody.addEventListener('click', function (e) {
+    if (e.target.closest('a, button, summary')) {
+      return;
+    }
+    var tr = e.target.closest('tr[data-net-id]');
+    if (!tr) {
+      return;
+    }
+    window.location.href = 'net.php?id=' + encodeURIComponent(tr.dataset.netId);
+  });
+
+  // Only one download menu open at a time, and closed by clicking anywhere else.
+  document.addEventListener('click', function (e) {
+    document.querySelectorAll('.download-menu[open]').forEach(function (d) {
+      if (!d.contains(e.target)) {
+        d.removeAttribute('open');
+      }
+    });
+  });
+
+  function makeIconButton(icon, label, extraClass) {
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'icon-action-btn' + (extraClass ? ' ' + extraClass : '');
+    btn.textContent = icon;
+    btn.title = label;
+    btn.setAttribute('aria-label', label);
+    return btn;
+  }
+
   async function loadNets() {
     tbody.innerHTML = '<tr><td colspan="6" class="loading">Loading nets…</td></tr>';
 
@@ -181,38 +217,65 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     tbody.innerHTML = '';
     nets.forEach(function (net) {
+      var netUrl = 'net.php?id=' + encodeURIComponent(net.id);
+
       var tr = document.createElement('tr');
-      tr.innerHTML =
-        '<td>' + HNH.escapeHtml(net.name || '(untitled)') + '</td>' +
-        '<td>' + HNH.escapeHtml(formatDate(net.created_at)) + '</td>' +
-        '<td>' + HNH.escapeHtml(net.net_control || '') + '</td>' +
-        '<td>' + net.checkin_count + '</td>' +
-        '<td>' + HNH.escapeHtml(net.status) + '</td>' +
-        '<td class="actions"></td>';
+      tr.dataset.netId = net.id;
 
-      var actions = tr.querySelector('.actions');
+      var nameTd = document.createElement('td');
+      var nameLink = document.createElement('a');
+      nameLink.className = 'row-link';
+      nameLink.href = netUrl;
+      nameLink.textContent = net.name || '(untitled)';
+      nameTd.appendChild(nameLink);
+      tr.appendChild(nameTd);
 
-      var openLink = document.createElement('a');
-      openLink.href = 'net.php?id=' + encodeURIComponent(net.id);
-      openLink.textContent = net.status === 'closed' ? 'Resume' : 'Open';
-      actions.appendChild(openLink);
+      var dateTd = document.createElement('td');
+      dateTd.textContent = formatDate(net.created_at);
+      tr.appendChild(dateTd);
 
+      var ncTd = document.createElement('td');
+      ncTd.textContent = net.net_control || '';
+      tr.appendChild(ncTd);
+
+      var ciTd = document.createElement('td');
+      ciTd.textContent = net.checkin_count;
+      tr.appendChild(ciTd);
+
+      var statusTd = document.createElement('td');
+      statusTd.textContent = net.status;
+      tr.appendChild(statusTd);
+
+      var actionsTd = document.createElement('td');
+      actionsTd.className = 'actions';
+
+      var dlMenu = document.createElement('details');
+      dlMenu.className = 'download-menu';
+      var dlSummary = document.createElement('summary');
+      dlSummary.className = 'icon-action-btn';
+      dlSummary.textContent = '⬇';
+      dlSummary.title = 'Download…';
+      dlMenu.appendChild(dlSummary);
+
+      var dlList = document.createElement('ul');
       [
         { format: 'csv', label: 'CSV' },
         { format: 'report', label: 'Report' },
         { format: 'report', label: 'Report w/ Notes', notes: true },
-        { format: 'json', label: 'JSON' },
+        { format: 'json', label: 'JSON backup' },
       ].forEach(function (dl) {
+        var li = document.createElement('li');
         var link = document.createElement('a');
         link.href = 'api/net_download.php?id=' + encodeURIComponent(net.id) + '&format=' + dl.format +
           (dl.notes ? '&notes=1' : '');
         link.textContent = dl.label;
-        actions.appendChild(link);
+        li.appendChild(link);
+        dlList.appendChild(li);
       });
+      dlMenu.appendChild(dlList);
+      actionsTd.appendChild(dlMenu);
 
-      var startLikeBtn = document.createElement('button');
-      startLikeBtn.type = 'button';
-      startLikeBtn.textContent = 'Start new net like this one';
+      var startLikeBtn = makeIconButton('🔁', 'Start new net like this one');
       startLikeBtn.addEventListener('click', async function () {
         let full;
         try {
@@ -223,12 +286,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
         openPrefilledForm(full);
       });
-      actions.appendChild(startLikeBtn);
+      actionsTd.appendChild(startLikeBtn);
 
-      var delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.className = 'danger';
-      delBtn.textContent = 'Delete';
+      var delBtn = makeIconButton('🗑', 'Delete "' + (net.name || 'untitled') + '"', 'danger');
       delBtn.addEventListener('click', async function () {
         if (!confirm('Delete "' + (net.name || '(untitled)') + '"? This cannot be undone.')) {
           return;
@@ -244,8 +304,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
         loadNets();
       });
-      actions.appendChild(delBtn);
+      actionsTd.appendChild(delBtn);
 
+      tr.appendChild(actionsTd);
       tbody.appendChild(tr);
     });
   }

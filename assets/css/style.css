@@ -434,6 +434,92 @@ button.danger {
   filter: brightness(1.1);
 }
 
+/* Net list: whole row opens the net on click, not just a dedicated Open/Resume button -- see
+   net-list.js's delegated tbody click handler. The Name cell is a real <a> (native
+   ctrl/middle-click-to-new-tab still works there); other cells are plain text that the delegated
+   handler catches. Scoped to #net-list specifically so this doesn't affect the check-in table. */
+#net-list tbody tr {
+  cursor: pointer;
+}
+
+#net-list tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+#net-list .row-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+#net-list .row-link:hover {
+  text-decoration: underline;
+}
+
+/* Uniform icon-only action buttons (net list): Download/Start-like-this/Delete all read the same
+   size/shape so they stay lined up row to row, rather than a mix of differently-sized links and
+   text buttons. Each needs its `title`/aria-label for what the icon actually means. */
+.icon-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.icon-action-btn::-webkit-details-marker {
+  display: none;
+}
+
+.icon-action-btn:hover {
+  filter: brightness(1.1);
+}
+
+.icon-action-btn.danger {
+  background: var(--danger);
+}
+
+.download-menu {
+  position: relative;
+  display: inline-block;
+}
+
+.download-menu > ul {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 20;
+  margin: 2px 0 0;
+  padding: 0.3rem 0;
+  list-style: none;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  min-width: 160px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.download-menu > ul li a {
+  display: block;
+  padding: 0.35rem 0.75rem;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.download-menu > ul li a:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
 td.loading,
 td.empty,
 td.error {
