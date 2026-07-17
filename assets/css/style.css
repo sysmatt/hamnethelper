@@ -413,8 +413,12 @@ button.danger {
 }
 
 /* Check-in table's QRZ link: styled to match the 73/Delete buttons next to it, rather than
-   looking like a plain text link among button-styled actions. */
-.action-btn-link {
+   looking like a plain text link among button-styled actions.
+   NOTE: selector must out-specificity ".actions a" above (class+element) or its `color:
+   var(--accent)` wins over this rule's white text -- which, against this rule's own
+   accent-colored background, renders as invisible text on a same-colored button. Learned that
+   one from a screenshot: the button looked "blank" but the text was there, just accent-on-accent. */
+.actions a.action-btn-link {
   display: inline-flex;
   align-items: center;
   background: var(--accent);
@@ -426,7 +430,7 @@ button.danger {
   white-space: nowrap;
 }
 
-.action-btn-link:hover {
+.actions a.action-btn-link:hover {
   filter: brightness(1.1);
 }
 
