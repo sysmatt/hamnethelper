@@ -412,6 +412,24 @@ button.danger {
   color: var(--accent);
 }
 
+/* Check-in table's QRZ link: styled to match the 73/Delete buttons next to it, rather than
+   looking like a plain text link among button-styled actions. */
+.action-btn-link {
+  display: inline-flex;
+  align-items: center;
+  background: var(--accent);
+  color: #fff;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.action-btn-link:hover {
+  filter: brightness(1.1);
+}
+
 td.loading,
 td.empty,
 td.error {

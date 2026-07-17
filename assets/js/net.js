@@ -146,6 +146,15 @@ document.addEventListener('DOMContentLoaded', async function () {
 
       var actions = tr.querySelector('.actions');
 
+      var qrzLink = document.createElement('a');
+      qrzLink.className = 'action-btn-link';
+      qrzLink.href = 'https://www.qrz.com/db/' + encodeURIComponent(c.callsign);
+      qrzLink.target = '_blank';
+      qrzLink.rel = 'noopener noreferrer';
+      qrzLink.textContent = 'QRZ';
+      qrzLink.title = 'Open ' + c.callsign + ' on QRZ.com in a new tab';
+      actions.appendChild(qrzLink);
+
       var toggleBtn = document.createElement('button');
       toggleBtn.type = 'button';
       toggleBtn.textContent = c.checked_out_at ? 'Un-73' : '73';
