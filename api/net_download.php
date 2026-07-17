@@ -71,6 +71,71 @@ function hnh_report_time(?string $iso): string
     }
 }
 
+/**
+ * Converts script_notes' markdown source to clean plain text for the report download -- strips
+ * the syntax the Script & Notes editor's toolbar actually produces (headings, bold, italic,
+ * bullet lists; links/code/strikethrough handled too since they're cheap and someone may have
+ * typed them by hand) and word-wraps at $wrapWidth, which reads much better pasted into an email
+ * than a raw markdown blob full of heading/emphasis/list-marker characters and un-wrapped long
+ * lines.
+ *
+ * Deliberately a small regex-based stripper, not a full CommonMark parser -- script_notes is
+ * short-form net announcements/scripts, not arbitrary complex markdown, so this doesn't need to
+ * handle tables, footnotes, nested blockquotes, etc. Order matters in a few places: list-marker
+ * normalization runs before inline emphasis stripping so a `*`-bulleted list item's leading `*`
+ * isn't mistaken for an italic marker; longer emphasis markers (`***`/`___`) are stripped before
+ * shorter ones (`**`/`__`, then `*`/`_`) so nested/combined bold+italic doesn't leave stray
+ * asterisks behind.
+ */
+function hnh_markdown_to_plain(string $markdown, int $wrapWidth = 80): string
+{
+    $lines = preg_split('/\r\n|\r|\n/', $markdown);
+    $out = [];
+
+    foreach ($lines as $line) {
+        // Horizontal rule (---, ***, ___ alone on a line) -- collapse to a blank line.
+        if (preg_match('/^\s*([-*_])\1{2,}\s*$/', $line)) {
+            $out[] = '';
+            continue;
+        }
+
+        $line = preg_replace('/^#{1,6}\s+/', '', $line);           // # Heading -> Heading
+        $line = preg_replace('/^>\s?/', '', $line);                 // > quote -> quote
+        $line = preg_replace('/^(\s*)[-*+]\s+/', '$1- ', $line);    // -/*/+  list -> - list (normalized)
+
+        $line = preg_replace('/\[([^\]]+)\]\(([^)]+)\)/', '$1 ($2)', $line); // [text](url) -> text (url)
+
+        $line = preg_replace('/(\*\*\*|___)(.+?)\1/', '$2', $line); // ***bold italic***
+        $line = preg_replace('/(\*\*|__)(.+?)\1/', '$2', $line);    // **bold**
+        $line = preg_replace('/\*(.+?)\*/', '$1', $line);           // *italic*
+        $line = preg_replace('/_(.+?)_/', '$1', $line);             // _italic_
+        $line = preg_replace('/~~(.+?)~~/', '$1', $line);           // ~~strikethrough~~
+        $line = preg_replace('/`([^`]+)`/', '$1', $line);           // `code`
+
+        $out[] = $line;
+    }
+
+    // A horizontal rule collapsing to a blank line, next to a blank line already on either side
+    // of it in the source (a common way to visually separate sections in markdown), would
+    // otherwise leave a stray double-blank gap -- collapse any run of 2+ blank lines to one.
+    $collapsed = [];
+    foreach ($out as $line) {
+        if ($line === '' && end($collapsed) === '') {
+            continue;
+        }
+        $collapsed[] = $line;
+    }
+
+    // Word-wrap each line independently (not the whole blob) so intentional blank lines --
+    // paragraph/list-item breaks -- are preserved rather than merged into one reflowed mass.
+    $wrapped = array_map(
+        static fn($line) => $line === '' ? '' : wordwrap($line, $wrapWidth, "\n", false),
+        $collapsed
+    );
+
+    return implode("\n", $wrapped);
+}
+
 $baseName = hnh_download_slug($net['name'] ?? 'net') . '-' . hnh_download_date($net['created_at'] ?? null);
 
 switch ($format) {
@@ -119,7 +184,7 @@ switch ($format) {
         if (trim($net['script_notes'] ?? '') !== '') {
             $lines[] = 'SCRIPT & NOTES';
             $lines[] = str_repeat('-', 14);
-            $lines[] = $net['script_notes'];
+            $lines[] = hnh_markdown_to_plain($net['script_notes'], 80);
             $lines[] = '';
         }
 
@@ -127,26 +192,55 @@ switch ($format) {
         $lines[] = 'CHECK-INS (' . count($checkins) . ')';
         $lines[] = str_repeat('-', 11);
 
-        foreach ($checkins as $c) {
-            $name = hnh_checkin_display_name($c);
-            $where = trim(
-                ($c['city'] ?? '') . ((!empty($c['city']) && !empty($c['state'])) ? ', ' : '') . ($c['state'] ?? '')
-            );
-            $inTime = hnh_report_time($c['checked_in_at'] ?? null);
-            $outTime = hnh_report_time($c['checked_out_at'] ?? null);
+        if (!$checkins) {
+            $lines[] = '(no check-ins)';
+        } else {
+            // Column widths are computed from the actual data (like hamdat's own --table output)
+            // rather than fixed guesses, so "Name"/"City/State" line up cleanly across rows
+            // regardless of how long any particular callsign/name/city happens to be -- a fixed
+            // width would either truncate long values or leave everything after them misaligned.
+            $columns = ['num' => '#', 'callsign' => 'Callsign', 'name' => 'Name', 'where' => 'City/State', 'in' => 'Check-in', 'out' => 'Check-out'];
 
-            $row = sprintf('%2d. %-10s', $c['order'] ?? 0, $c['callsign'] ?? '');
-            if ($name !== '') {
-                $row .= '  ' . $name;
+            $rows = [];
+            foreach ($checkins as $c) {
+                $rows[] = [
+                    'num' => (string) ($c['order'] ?? ''),
+                    'callsign' => (string) ($c['callsign'] ?? ''),
+                    'name' => hnh_checkin_display_name($c),
+                    'where' => trim(
+                        ($c['city'] ?? '') . ((!empty($c['city']) && !empty($c['state'])) ? ', ' : '') . ($c['state'] ?? '')
+                    ),
+                    'in' => hnh_report_time($c['checked_in_at'] ?? null),
+                    'out' => hnh_report_time($c['checked_out_at'] ?? null),
+                    'notes' => (string) ($c['notes'] ?? ''),
+                ];
             }
-            if ($where !== '') {
-                $row .= '  (' . $where . ')';
-            }
-            $row .= '  [' . $inTime . ($outTime !== '' ? ' - ' . $outTime : '') . ']';
-            $lines[] = $row;
 
-            if ($includeNotes && trim($c['notes'] ?? '') !== '') {
-                $lines[] = '      Notes: ' . $c['notes'];
+            $widths = [];
+            foreach ($columns as $key => $label) {
+                $widths[$key] = strlen($label);
+                foreach ($rows as $r) {
+                    $widths[$key] = max($widths[$key], strlen($r[$key]));
+                }
+            }
+
+            $formatRow = function (array $cells) use ($widths, $columns): string {
+                $parts = [];
+                foreach ($columns as $key => $label) {
+                    $pad = $key === 'num' ? STR_PAD_LEFT : STR_PAD_RIGHT;
+                    $parts[] = str_pad((string) $cells[$key], $widths[$key], ' ', $pad);
+                }
+                return rtrim(implode('  ', $parts));
+            };
+
+            $lines[] = $formatRow($columns);
+            $lines[] = implode('  ', array_map(static fn($w) => str_repeat('-', $w), $widths));
+
+            foreach ($rows as $r) {
+                $lines[] = $formatRow($r);
+                if ($includeNotes && trim($r['notes']) !== '') {
+                    $lines[] = '    Notes: ' . $r['notes'];
+                }
             }
         }
 

@@ -213,10 +213,20 @@ Per-row actions:
   the on-screen table. Report is a clean plain-text summary, decided v1 format (an HTML option may
   follow later, not v1) — intended to be pasted directly into a follow-up email, so it favors
   readability over structure: net header (name, date, net control, frequency, status), the
-  `script_notes` content, then the check-in list (composed name form, city/state, check-in/out
-  times). The plain **Report** omits each check-in's per-row `notes` — those are often just
-  internal shorthand for the net controller, not meant for an outward-facing follow-up — while
-  **Report w/ Notes** includes them. JSON backup is the raw net file, as-is. Every download
+  `script_notes` content — converted from its markdown source to clean plain text and word-wrapped
+  at 80 columns (`hnh_markdown_to_plain()` in `api/net_download.php`: strips heading/bold/italic/
+  link/code/strikethrough syntax, normalizes bullet markers, collapses horizontal rules to a blank
+  line; a small regex-based stripper, not a full CommonMark parser, since script_notes is
+  short-form announcements/scripts, not arbitrary complex markdown) — then the check-in list as a
+  column-aligned plain-text table (#,
+  Callsign, composed name form, City/State, Check-in, Check-out — widths computed from the
+  actual data per download, like hamdat's own `--table` output, so columns line up cleanly
+  whatever the longest callsign/name/city in that particular net happens to be, rather than a
+  fixed width that would either truncate or misalign). The plain **Report** omits each check-in's
+  per-row `notes` — those are often just internal shorthand for the net controller, not meant for
+  an outward-facing follow-up — while **Report w/ Notes** appends each one as an indented line
+  below its row (notes are free-text and can be long, so they're not forced into a table column).
+  JSON backup is the raw net file, as-is. Every download
   filename includes the net's creation date (`<slug>-<YYYY-MM-DD>...`), since nets that share a
   name (a weekly net run under the same title every week) would otherwise all download to
   indistinguishable filenames.
