@@ -341,8 +341,21 @@ document.addEventListener('DOMContentLoaded', async function () {
   // the merged set, rebuilt whenever the underlying roster or hamdat cache changes; `suggestions`
   // is the current filtered/ranked view of it for whatever's typed right now.
 
+  // A callsign can only be checked in once. Silently no-ops on a duplicate -- no alert, no
+  // second row -- rather than erroring, since the common way to hit this is an operator
+  // re-entering someone by habit, not a real mistake that needs flagging.
+  function isAlreadyCheckedIn(callsign) {
+    var upper = callsign.toUpperCase();
+    return (net.checkins || []).some(function (c) {
+      return (c.callsign || '').toUpperCase() === upper;
+    });
+  }
+
   function addCheckin(callsign, name, city, state) {
     net.checkins = net.checkins || [];
+    if (isAlreadyCheckedIn(callsign)) {
+      return;
+    }
     net.checkins.push({
       order: net.checkins.length + 1,
       callsign: callsign,
@@ -430,12 +443,17 @@ document.addEventListener('DOMContentLoaded', async function () {
   // to spot, not just whichever text-matched marginally better. An exact callsign match still
   // wins outright regardless of roster status, since typing the full call is effectively
   // confirming identity either way.
+  //
+  // Callsigns already on the check-in list are excluded entirely -- once someone's checked in,
+  // there's no reason to keep suggesting them (and it keeps the dropdown from being cluttered
+  // with people already handled, on a busy net with a long roster).
   function filterCandidates(query) {
     var q = query.trim().toUpperCase();
     if (!q) {
       return [];
     }
     return candidates
+      .filter(function (c) { return !isAlreadyCheckedIn(c.callsign); })
       .map(function (c) {
         var score;
         if (c.callsign === q) {

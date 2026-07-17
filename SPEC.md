@@ -272,6 +272,11 @@ keeps net list data consistent for any future filtering/reporting by type).
   suggestion (or, if the dropdown has no matches, adds a row with just the typed callsign and no
   `name` — the visitor/unlisted-station case; the operator can still set a `preferred_name` via
   the pencil icon, §5.2). Escape closes the dropdown without clearing the typed text.
+  - **A callsign can only be checked in once.** A callsign already on the check-in list (whether
+    or not they've since been 73'd — the list entry still exists either way) is excluded from the
+    suggestions dropdown entirely, and attempting to add one anyway (typing the exact callsign
+    with no matching suggestion and pressing Enter) silently no-ops — no error, no duplicate row.
+    To log the same callsign again, delete the existing row first.
   - **Global "/" shortcut**: pressing `/` anywhere on the page (when focus isn't already in a
     text field, including the Script & Notes editor) refocuses this box, select-all, so the
     operator can jump back to it without reaching for the mouse.
