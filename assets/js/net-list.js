@@ -79,10 +79,15 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     let net;
     try {
-      net = await HNH.api('api/net_create.php', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
+      // Minimum visible duration so the "Creating…" state never flashes by unnoticed on a fast
+      // request (e.g. no ZIP filled in, or hamdat failing fast against a missing database) --
+      // without this, "no indication anything happened" is exactly what a quick create looks like.
+      net = await HNH.withMinDuration(function () {
+        return HNH.api('api/net_create.php', {
+          method: 'POST',
+          body: JSON.stringify(payload),
+        });
+      }, 500);
     } catch (err) {
       alert('Could not create net: ' + err.message);
       submitBtn.disabled = false;

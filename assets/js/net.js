@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   var checkinTbody = document.querySelector('#checkin-table tbody');
   var lookupBox = document.getElementById('lookup-box');
   var suggestionsEl = document.getElementById('lookup-suggestions');
+  var lookupStatusEl = document.getElementById('lookup-status');
   var uploadBtn = document.getElementById('upload-roster-btn');
   var uploadInput = document.getElementById('roster-file-input');
 
@@ -331,6 +332,46 @@ document.addEventListener('DOMContentLoaded', async function () {
     });
 
     candidates = Object.keys(map).map(function (k) { return map[k]; });
+    renderLookupStatus();
+  }
+
+  // Visibility into how many entries are actually loaded in each lookup list -- without this,
+  // there's no way to tell "roster upload silently produced 0 rows" from "there's just nobody
+  // near this ZIP" apart from noticing the lookup box quietly not matching anything.
+  function renderLookupStatus() {
+    var rosterCount = (net.roster || []).length;
+    var hamdatResults = (net.hamdat_lookup && net.hamdat_lookup.cached_results) || [];
+    var hamdatCount = hamdatResults.length;
+    var refreshedAt = net.hamdat_lookup && net.hamdat_lookup.last_refreshed_at;
+
+    var text = 'Roster: ' + rosterCount + ' callsign' + (rosterCount === 1 ? '' : 's') +
+      ' · HAMDAT cache: ' + hamdatCount + ' record' + (hamdatCount === 1 ? '' : 's');
+    text += refreshedAt ? ' (refreshed ' + formatRelativeTime(refreshedAt) + ')' : ' (not loaded yet)';
+
+    lookupStatusEl.textContent = text;
+  }
+
+  function formatRelativeTime(iso) {
+    var d = new Date(iso);
+    if (isNaN(d)) {
+      return '';
+    }
+    var seconds = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (seconds < 5) {
+      return 'just now';
+    }
+    if (seconds < 60) {
+      return seconds + 's ago';
+    }
+    var minutes = Math.floor(seconds / 60);
+    if (minutes < 60) {
+      return minutes + 'm ago';
+    }
+    var hours = Math.floor(minutes / 60);
+    if (hours < 24) {
+      return hours + 'h ago';
+    }
+    return Math.floor(hours / 24) + 'd ago';
   }
 
   // Match priority: exact callsign > callsign prefix > callsign substring > name substring.
@@ -558,10 +599,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     hamdatLastRefreshed.textContent = 'Querying hamdat…';
 
     try {
-      var result = await HNH.api('api/hamdat_lookup.php', {
-        method: 'POST',
-        body: JSON.stringify({ zip: net.hamdat_lookup.zip, radius_miles: net.hamdat_lookup.radius_miles }),
-      });
+      var result = await HNH.withMinDuration(function () {
+        return HNH.api('api/hamdat_lookup.php', {
+          method: 'POST',
+          body: JSON.stringify({ zip: net.hamdat_lookup.zip, radius_miles: net.hamdat_lookup.radius_miles }),
+        });
+      }, 500);
       net.hamdat_lookup.cached_results = result.results || [];
       net.hamdat_lookup.last_refreshed_at = new Date().toISOString();
       rebuildCandidates();

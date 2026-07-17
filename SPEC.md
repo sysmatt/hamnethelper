@@ -207,7 +207,11 @@ best-effort: a failed lookup (bad zip, hamdat unavailable) never blocks net crea
 still created, and the error is surfaced back to the client (`hamdat_lookup_error` on the create
 response) as a non-blocking warning; the operator can retry from Lookup Settings once the net is
 open. The create dialog's submit button shows "Creating & looking up HAMDAT…" instead of a plain
-"Creating…" when a zip is present, since the request can take a few seconds longer.
+"Creating…" when a zip is present, since the request can take a few seconds longer. Both this and
+the Lookup Settings dialog's Load/Refresh (§5.1) enforce a minimum visible loading duration
+(~500ms) so the indicator can't flash by unnoticed on a fast request — a plain create with no zip,
+or a hamdat call that fails fast against a missing database, would otherwise complete quickly
+enough that "loading" and "done" are indistinguishable from "nothing happened."
 
 `net_type` is a fixed dropdown: **Weekly · Emergency/ARES · Drill/Training · Special Event ·
 Other** (exact labels/values open to adjustment, but the set stays fixed rather than free text —
@@ -259,6 +263,12 @@ keeps net list data consistent for any future filtering/reporting by type).
   - Actions: **Delete** (remove row, confirm), **73** (marks checked out — sets
     `checked_out_at` to now, grays out the row, button becomes **Un-73** which clears
     `checked_out_at` and restores normal styling), **✏️ Edit name** (see §5.2).
+  - Below the table, a one-line status shows how many entries are actually loaded in each lookup
+    list — e.g. `Roster: 42 callsigns · HAMDAT cache: 187 records (refreshed 5m ago)` (or "not
+    loaded yet" in place of the refreshed time before the first Load). Without this there's no way
+    to distinguish "roster upload silently produced 0 rows" from "nobody happens to be near this
+    ZIP" other than noticing the lookup box quietly matching nothing. Updates automatically
+    whenever the roster or hamdat cache changes (net load, roster upload, hamdat load/refresh).
 
 ### 5.2 Preferred / nickname handling
 

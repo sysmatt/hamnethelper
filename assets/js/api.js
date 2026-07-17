@@ -26,6 +26,30 @@ HNH.api = async function (url, options) {
   return data;
 };
 
+/**
+ * Runs an async fn() but guarantees at least minMs elapses before this resolves/rejects, so a
+ * loading indicator tied to it (button disabled/relabeled, etc.) doesn't flash imperceptibly on
+ * a fast request -- e.g. net creation with no ZIP filled in, or a hamdat call that fails fast
+ * against a missing/misconfigured database. Only ever adds delay, never removes it; a genuinely
+ * slow request is unaffected.
+ */
+HNH.withMinDuration = async function (fn, minMs) {
+  const start = Date.now();
+  try {
+    const result = await fn();
+    await HNH._delayRemaining(start, minMs);
+    return result;
+  } catch (err) {
+    await HNH._delayRemaining(start, minMs);
+    throw err;
+  }
+};
+
+HNH._delayRemaining = function (start, minMs) {
+  const elapsed = Date.now() - start;
+  return elapsed < minMs ? new Promise((resolve) => setTimeout(resolve, minMs - elapsed)) : null;
+};
+
 HNH.getConfig = function () {
   if (!HNH._configPromise) {
     HNH._configPromise = HNH.api(window.HNH_CONFIG_URL);

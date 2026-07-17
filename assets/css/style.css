@@ -245,6 +245,12 @@ body.net-closed .script-notes-panel {
   overflow-x: auto;
 }
 
+.lookup-status {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
 #script-notes {
   width: 100%;
   min-height: 6rem;

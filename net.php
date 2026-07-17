@@ -72,6 +72,7 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $netId)) {
         </thead>
         <tbody></tbody>
       </table>
+      <p id="lookup-status" class="lookup-status"></p>
     </section>
   </div>
 </main>
