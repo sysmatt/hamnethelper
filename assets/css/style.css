@@ -87,6 +87,7 @@ table.data-table {
   text-align: left;
   padding: 0.5rem 0.75rem;
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
 .data-table th {
@@ -97,8 +98,19 @@ table.data-table {
   letter-spacing: 0.02em;
 }
 
-tr.checked-out {
-  opacity: 0.5;
+/* Signed-off (73'd) rows: strikethrough + muted text reads clearly at a glance, even on a dark
+   theme where a plain opacity dim is too subtle to notice. Actions stay at full strength so the
+   Un-73 button is never harder to see/click just because the row it's on is "done". */
+tr.checked-out td {
+  color: var(--text-muted);
+}
+
+tr.checked-out td:not(.actions):not(.notes-cell):not(.drag-handle) {
+  text-decoration: line-through;
+}
+
+tr.checked-out td.actions {
+  color: var(--text);
 }
 
 .drag-handle {
