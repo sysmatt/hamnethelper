@@ -20,6 +20,12 @@ function hnh_config(): array
         'hamdat_bin' => '/usr/local/bin/hamdat',
         'hamdat_db' => null,
         'hamdat_temp_dir' => sys_get_temp_dir(),
+        // If hamdat needs to run from a specific Python venv (its own dependencies -- requests,
+        // pgeocode -- installed there rather than in whatever python3 the web server's PATH
+        // resolves to), set this to that venv's python binary, e.g.
+        // '/home/hamdat/venv/bin/python3'. Left unset (null), hamdat runs directly, relying on
+        // its own `#!/usr/bin/env python3` shebang. See lib/hamdat.php.
+        'hamdat_python_bin' => null,
         'nets_dir' => '/var/lib/hamnethelper/nets',
         'app_name' => 'HamNetHelper',
         'net_types' => [

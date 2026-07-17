@@ -189,8 +189,9 @@ optional — omitted keys fall back to the defaults in `lib/config.php`.
 
 | Key | Default | Description |
 |---|---|---|
-| `hamdat_bin` | `/usr/local/bin/hamdat` | Path to the hamdat binary (used once lookup is implemented) |
+| `hamdat_bin` | `/usr/local/bin/hamdat` | Path to the hamdat binary |
 | `hamdat_db` | *(none)* | Path to the hamdat SQLite database |
+| `hamdat_python_bin` | *(none)* | If set, invoked as the Python interpreter running `hamdat_bin` explicitly (e.g. `/home/hamdat/venv/bin/python3`) instead of relying on hamdat's own shebang — use when hamdat's dependencies (requests, pgeocode) live in a specific venv rather than the web server's default `python3` |
 | `nets_dir` | `/var/lib/hamnethelper/nets` | Where net JSON files are stored — must be outside the docroot and writable by the web server user |
 | `app_name` | `HamNetHelper` | Shown in the page header/title |
 | `net_types` | Weekly / Emergency-ARES / Drill-Training / Special Event / Other | Dropdown options on the net creation form. Add, remove, or relabel entries here — no code change needed |

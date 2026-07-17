@@ -10,6 +10,12 @@
  * hamdat's own JSON field names (see hamdat/README.md "Result fields"): call_sign, name, city,
  * state, distance_miles, ... -- only call_sign/name/city/state are kept here.
  *
+ * hamdat is a `#!/usr/bin/env python3` script -- run directly, that shebang resolves to whatever
+ * python3 is first on PATH for the web server process, which is not necessarily the venv hamdat's
+ * own dependencies (requests, pgeocode) are actually installed into. If `hamdat_python_bin` is
+ * configured, we invoke that interpreter explicitly with the hamdat script as its argument
+ * instead of relying on the shebang, so the correct venv is used regardless of PATH.
+ *
  * Throws RuntimeException on any failure; callers decide whether that's fatal.
  */
 function hnh_hamdat_zip_lookup(array $config, string $zip, int $radiusMiles): array
@@ -24,8 +30,13 @@ function hnh_hamdat_zip_lookup(array $config, string $zip, int $radiusMiles): ar
     $tempDir = rtrim($config['hamdat_temp_dir'], '/');
     $tmpFile = $tempDir . '/hnh_hamdat_' . bin2hex(random_bytes(8)) . '.json';
 
+    $interpreterPrefix = !empty($config['hamdat_python_bin'])
+        ? escapeshellarg($config['hamdat_python_bin']) . ' '
+        : '';
+
     $cmd = sprintf(
-        '%s --db %s --zip %s --radius-miles %d --json --file %s 2>&1',
+        '%s%s --db %s --zip %s --radius-miles %d --json --file %s 2>&1',
+        $interpreterPrefix,
         escapeshellarg($config['hamdat_bin']),
         escapeshellarg($config['hamdat_db']),
         escapeshellarg($zip),

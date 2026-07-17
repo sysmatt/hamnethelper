@@ -18,6 +18,12 @@ return [
     // Full path to the hamdat SQLite database
     'hamdat_db' => '/home/ubuntu/.hamdat/hamdat.db',
 
+    // If hamdat needs its dependencies (requests, pgeocode) from a specific Python venv rather
+    // than whatever python3 the web server's PATH resolves to, set this to that venv's python
+    // binary -- it's invoked explicitly as the interpreter instead of relying on hamdat's own
+    // `#!/usr/bin/env python3` shebang. Leave unset if hamdat runs fine on its own.
+    'hamdat_python_bin' => '/home/hamdat/venv/bin/python3',
+
     // Writable temp directory used briefly when generating hamdat query output. Defaults to
     // sys_get_temp_dir() if omitted -- override only if that default isn't writable by the web
     // server user.

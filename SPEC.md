@@ -59,6 +59,17 @@ to the `hamdat` binary with `exec()`, using `--zip`, `--radius-miles`, `--json`,
 through `escapeshellarg()`. This means `hamnethelper` needs its own `HAMDAT_BIN`/`HAMDAT_DB` config
 — it does not depend on `hamdatweb` being installed or running.
 
+hamdat is a `#!/usr/bin/env python3` script, not a compiled binary — invoking `hamdat_bin`
+directly relies on that shebang resolving to a `python3` that actually has hamdat's own
+dependencies (`requests`, `pgeocode`) installed, which is not guaranteed to be the web server
+process's default `python3`. If hamdat needs to run from a specific venv, `hamdat_python_bin`
+(e.g. `/home/hamdat/venv/bin/python3`) is invoked explicitly as the interpreter instead — see
+`lib/hamdat.php` and the config reference in README.md. Confirmed the failure mode this fixes is
+real, not theoretical: reproduced hamdat's own `Install pgeocode: pip install pgeocode` error
+through the actual endpoint when invoked via a `python3` lacking that package, then confirmed the
+same request gets meaningfully further (past the import, into the real query) once
+`hamdat_python_bin` points at a venv that has it.
+
 **Save model:** debounced autosave, no manual save button. Any change to the active net (check-in
 added, edited, 73'd, reordered, note typed, script/notes edited, net closed/reopened) triggers a
 background save a short delay after the last edit (e.g. 800ms debounce), via
