@@ -1,7 +1,8 @@
 > [!NOTE]
-> **All core functionality is implemented**, including the hamdat second-level lookup and the
-> CSV/Report/JSON downloads. The live-filtering suggestions dropdown on the callsign lookup box
-> is not built yet (Enter-to-add works now). See [SPEC.md](SPEC.md) for the full design.
+> **Everything in SPEC.md is implemented** — hamdat lookup, CSV/Report/Report w/ Notes/JSON
+> downloads, net import, the live-filtering lookup dropdown, drag-reorder, the Script & Notes
+> editor, all of it. See [SPEC.md](SPEC.md) for the full design and §9 there for what's
+> deliberately out of scope for v1 (not "missing" — decided against).
 
 # hamnethelper
 
@@ -34,7 +35,8 @@ hamnethelper/                        ← this repo, cloned into docroot
 ├── net.php                         ← net operation page
 ├── lib/
 │   ├── config.php                  ← loads + defaults the site config
-│   └── net_store.php               ← net JSON file I/O (read/write/list/delete)
+│   ├── net_store.php               ← net JSON file I/O (read/write/list/delete/import)
+│   └── hamdat.php                  ← shared hamdat CLI invocation (lookup + auto-lookup on create)
 ├── api/                            ← JSON endpoints, all behind simplewebauth
 │   ├── _bootstrap.php              ← shared auth check + config + helpers
 │   ├── config.php                  ← public config subset for the frontend
@@ -44,12 +46,12 @@ hamnethelper/                        ← this repo, cloned into docroot
 │   ├── net_get.php
 │   ├── net_save.php                ← autosave target
 │   ├── net_delete.php
-│   ├── net_download.php            ← csv/json/report downloads
+│   ├── net_download.php            ← csv/report/report-with-notes/json downloads
 │   └── hamdat_lookup.php           ← hamdat CLI integration
 ├── assets/
 │   ├── css/style.css
 │   ├── js/                         ← api.js, theme.js, net-list.js, net.js
-│   └── vendor/                     ← SortableJS + EasyMDE, vendored (see VERSIONS.md)
+│   └── vendor/                     ← SortableJS + Vditor, vendored (see VERSIONS.md)
 ├── hamnethelper-config.php.example
 └── SPEC.md
 ```
@@ -83,9 +85,12 @@ shallow clones/pulls never overwrite it:
 | [simplewebauth](../simplewebauth/) | Deployed as a sibling directory in the docroot |
 
 No `composer`, no `npm`, nothing to build or fetch at deploy time — third-party JS
-(`SortableJS`, `EasyMDE`) is vendored directly into this repo under `assets/vendor/` (pinned
+(`SortableJS`, `Vditor`) is vendored directly into this repo under `assets/vendor/` (pinned
 versions in `assets/vendor/VERSIONS.md`) and committed like any other source file. A deploy is
-just: clone/pull, drop the config file, ensure `nets_dir` permissions.
+just: clone/pull, drop the config file, ensure `nets_dir` permissions. Note: `assets/vendor/vditor/`
+is ~4.4 MB (almost entirely its underlying markdown engine, not optional — see VERSIONS.md), a
+meaningful jump from everything else vendored here, but still a one-time cached browser download,
+not something re-fetched per request.
 
 > **A note on "the web server user"** — every command below uses `www-data` (Debian/Ubuntu
 > convention, matching the rest of this doc). Substitute your actual web server process user
@@ -199,6 +204,7 @@ optional — omitted keys fall back to the defaults in `lib/config.php`.
 | `default_hamdat_radius_miles` | `25` | Pre-filled radius in the HAMDAT Lookup Settings dialog for new nets |
 | `autosave_debounce_ms` | `800` | Delay after the last edit before autosaving |
 | `roster_upload_max_bytes` | `65536` | Max size accepted for an uploaded participant-list text file |
+| `lookup_suggestion_limit` | `15` | Max number of ranked matches shown in the callsign/name lookup dropdown |
 | `default_theme` | `dark` | Theme shown before any saved `localStorage` preference is applied |
 
 If `hamnethelper-config.php` is missing, pages and API calls show a clear setup error rather than
@@ -206,12 +212,12 @@ a blank page or a PHP warning.
 
 ---
 
-## Status / what's not built yet
+## Status
 
-Everything in SPEC.md is implemented except one piece of UI polish: the callsign/name lookup box
-currently adds a check-in on Enter (matching against the hamdat cache if present) but doesn't yet
-show a live-filtering suggestions dropdown as you type against the roster — see the TODO comment
-in `assets/js/net.js`.
+Everything described in SPEC.md is implemented — no stubs, no TODOs left in the codebase. See
+SPEC.md §9 for what's deliberately out of scope for v1 (a decision, not a gap): multi-operator
+concurrent editing, real-time cross-tab updates, any audio/radio integration, and user/role
+management beyond what `simplewebauth` already provides.
 
 ---
 

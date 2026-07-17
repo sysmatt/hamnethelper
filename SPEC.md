@@ -1,7 +1,9 @@
-# hamnethelper — Spec (Draft v0.2)
+# hamnethelper — Spec (v1.0, implemented)
 
-> **Status:** All open questions resolved as of this draft (§8 is empty). Read through end to end
-> before implementation starts — flag anything that's wrong or has drifted from what you meant.
+> **Status:** Fully implemented and iterated on with real usage — this describes the app as it
+> actually works today, not a pre-implementation plan. §8 (open questions) is empty; §9 lists
+> what's deliberately out of scope rather than missing. If anything here drifts from actual
+> behavior in the future, treat the code as authoritative and fix this doc to match.
 
 ## 1. Overview
 
@@ -36,8 +38,9 @@ storage" and "shell out to `hamdat`" — not rendering UI server-side.
 ├── hamnethelper/                     ← this repo, cloned/deployed here
 │   ├── index.php                     ← net list page
 │   ├── net.php                       ← net operation page
+│   ├── lib/                          ← config loading, net file I/O, shared hamdat CLI call
 │   ├── api/                          ← small PHP endpoints (JSON in/out)
-│   ├── assets/                       ← JS/CSS, no build step
+│   ├── assets/                       ← JS/CSS/vendored libs, no build step
 │   └── hamnethelper-config.php.example
 ├── hamnethelper-config.php           ← live config (created by you; NOT in the repo)
 ├── simplewebauth/
@@ -56,7 +59,7 @@ only thing that reads/writes these files; the browser never touches them directl
 
 **hamdat integration is a direct CLI call**, same pattern as `hamdatweb/index.php`: PHP shells out
 to the `hamdat` binary with `exec()`, using `--zip`, `--radius-miles`, `--json`, all arguments
-through `escapeshellarg()`. This means `hamnethelper` needs its own `HAMDAT_BIN`/`HAMDAT_DB` config
+through `escapeshellarg()`. This means `hamnethelper` needs its own `hamdat_bin`/`hamdat_db` config
 — it does not depend on `hamdatweb` being installed or running.
 
 hamdat is a `#!/usr/bin/env python3` script, not a compiled binary — invoking `hamdat_bin`
@@ -439,34 +442,56 @@ away.
 
 ---
 
-## 6. Proposed API (all under `api/`, JSON in/out, all behind simplewebauth)
+## 6. API (all under `api/`, JSON in/out, all behind the session check in `api/_bootstrap.php`)
 
 | Endpoint | Method | Purpose |
 |---|---|---|
+| `api/config.php` | GET | Public, browser-safe config subset (net types, debounce timing, theme, etc. — §2/README) |
 | `api/nets_list.php` | GET | List all nets + metadata (scans data dir) |
-| `api/net_create.php` | POST | Create a new net; optional `source_id` to carry over metadata |
+| `api/net_create.php` | POST | Create a new net from submitted form fields (blank or pre-filled — see §4's two creation flows). Runs the hamdat lookup inline if a ZIP is present. No `source_id` param — the client resolves any carry-over fields itself before submitting, so this endpoint always just creates from whatever fields it's given |
+| `api/net_import.php` | POST | Restore a previously-downloaded JSON backup as a **new** net — full fidelity (checkins, roster, script_notes, hamdat cache, status) except identity, which is always reassigned fresh (§4) |
 | `api/net_get.php?id=` | GET | Fetch full net JSON |
-| `api/net_save.php` | POST | Overwrite a net's JSON (autosave target) |
+| `api/net_save.php` | POST | Merge-and-overwrite a net's JSON (autosave target); `id`/`created_at` are server-authoritative, `updated_at` always recomputed |
 | `api/net_delete.php?id=` | POST | Delete a net file |
-| `api/net_download.php?id=&format=csv\|json\|report` | GET | Stream a download |
-| `api/hamdat_lookup.php` | POST | `{zip, radius_miles}` → hamdat CLI query → `[{callsign,name,city,state}]` |
+| `api/net_download.php?id=&format=csv\|json\|report[&notes=1]` | GET | Stream a download — `report` omits per-check-in notes unless `notes=1` is also given (§4) |
+| `api/hamdat_lookup.php` | POST | `{zip, radius_miles}` → hamdat CLI query → `{results: [{callsign,name,city,state}]}` |
 
-Exact shapes/names are easy to change — flagging for your review, not final.
+This is the actual, implemented API — not a proposal. `lib/hamdat.php` holds the shared hamdat CLI
+invocation used by both `net_create.php` and `hamdat_lookup.php`, so the exec()/escapeshellarg()
+logic exists in exactly one place.
 
 ---
 
-## 7. Security notes (draft)
+## 7. Security notes
 
-- Every page and every `api/*.php` endpoint requires `simplewebauth` (`require __DIR__ .
-  '/../simplewebauth/auth.php';` or equivalent for files under `api/`).
-- Net data lives outside the docroot — not servable by nginx under any config.
-- `net-id` path components validated as UUIDs (or similar fixed format) before touching the
-  filesystem, to prevent path traversal.
-- hamdat CLI args (`zip`, `radius`) validated (5-digit zip, numeric radius) and passed through
-  `escapeshellarg()`, matching `hamdatweb`'s existing approach.
+- **Pages** (`index.php`, `net.php`) require `simplewebauth` directly (`require __DIR__ .
+  '/../simplewebauth/auth.php';`) — redirects to the login page on a missing/expired session,
+  correct for a browser navigation.
+- **`api/*.php` endpoints** use a separate session check in `api/_bootstrap.php` instead — a
+  redirect response can't be sensibly parsed by `fetch()` (the browser just follows it silently
+  and returns login-page HTML with a 200 status), so the API layer checks the same session
+  simplewebauth set (same cookie name/lifetime/`gc_maxlifetime`) and returns a 401 JSON body on
+  failure instead. This intentionally duplicates simplewebauth's session-validation logic rather
+  than modifying that shared repo (it's reused by other tools too) — see the comment at the top
+  of `api/_bootstrap.php` for the full reasoning, and revisit if this pattern recurs enough to
+  justify a shared "auth_api.php" in simplewebauth itself.
+- Net data lives outside the docroot — not servable by nginx/Apache under any config.
+- `net-id` path components validated against a fixed pattern before touching the filesystem, to
+  prevent path traversal.
+- Net file writes are atomic (write to a temp file in the same directory, then `rename()`), so a
+  request that dies mid-write never leaves a truncated net file behind.
+- hamdat CLI args (`zip`, `radius`) validated (5-digit zip, non-negative integer radius) and
+  passed through `escapeshellarg()`, matching `hamdatweb`'s existing approach. If
+  `hamdat_python_bin` is configured, it's passed through `escapeshellarg()` too before being used
+  as the interpreter (§2).
 - Uploaded roster files: size-limited, parsed as plain text, one token per line, loosely validated
   as callsign-shaped (not strictly enforced — partial/garbage entries just won't match anything
   useful).
+- Imported net JSON backups (`api/net_import.php`) are merged over a full-shape skeleton rather
+  than trusted wholesale, so a hand-edited or partially-missing backup can't produce a
+  structurally invalid net file — and identity fields (`id`/`created_at`/`updated_at`) are always
+  reassigned server-side regardless of what the uploaded file claims, so an import can never
+  collide with or silently overwrite an existing net (§4).
 
 ---
 
