@@ -30,6 +30,10 @@ document.addEventListener('DOMContentLoaded', async function () {
   var candidates = []; // merged roster (level-1) + hamdat cache (level-2), rebuilt on data change
   var suggestions = []; // current filtered/ranked matches for the lookup box
   var activeIndex = -1;
+  // "Who's next" cursor -- pure client-side UI state, never saved to the net JSON. Tracked by
+  // object reference rather than row index: index shifts under delete/reorder, a reference to
+  // the actual checkin object doesn't, so the highlight survives those without extra bookkeeping.
+  var currentCheckin = null;
 
   // --- Autosave (SPEC.md §2) -----------------------------------------------------------------
 
@@ -147,16 +151,22 @@ document.addEventListener('DOMContentLoaded', async function () {
       var actions = tr.querySelector('.actions');
 
       var qrzLink = document.createElement('a');
-      qrzLink.className = 'action-btn-link';
+      qrzLink.className = 'icon-action-btn';
       qrzLink.href = 'https://www.qrz.com/db/' + encodeURIComponent(c.callsign);
       qrzLink.target = '_blank';
       qrzLink.rel = 'noopener noreferrer';
-      qrzLink.textContent = 'QRZ';
+      qrzLink.textContent = '🌐';
       qrzLink.title = 'Open ' + c.callsign + ' on QRZ.com in a new tab';
+      qrzLink.setAttribute('aria-label', 'Open ' + c.callsign + ' on QRZ.com');
       actions.appendChild(qrzLink);
 
+      // "73" stays as text, not a picture-icon -- it's the actual ham-radio nomenclature for
+      // "signing off," instantly recognizable to the audience in a way an invented glyph
+      // wouldn't be. Styled to match the icon buttons' height/color/radius, just auto-width
+      // instead of a fixed square so "Un-73" isn't cramped.
       var toggleBtn = document.createElement('button');
       toggleBtn.type = 'button';
+      toggleBtn.className = 'toggle-73-btn';
       toggleBtn.textContent = c.checked_out_at ? 'Un-73' : '73';
       toggleBtn.addEventListener('click', function () {
         c.checked_out_at = c.checked_out_at ? null : new Date().toISOString();
@@ -167,11 +177,16 @@ document.addEventListener('DOMContentLoaded', async function () {
 
       var delBtn = document.createElement('button');
       delBtn.type = 'button';
-      delBtn.className = 'danger';
-      delBtn.textContent = 'Delete';
+      delBtn.className = 'icon-action-btn danger';
+      delBtn.textContent = '🗑';
+      delBtn.title = 'Remove ' + c.callsign + ' from the check-in list';
+      delBtn.setAttribute('aria-label', 'Delete ' + c.callsign);
       delBtn.addEventListener('click', function () {
         if (!confirm('Remove ' + c.callsign + ' from the check-in list?')) {
           return;
+        }
+        if (net.checkins[idx] === currentCheckin) {
+          currentCheckin = null;
         }
         net.checkins.splice(idx, 1);
         renumber();
@@ -183,8 +198,34 @@ document.addEventListener('DOMContentLoaded', async function () {
       checkinTbody.appendChild(tr);
     });
 
+    applyCurrentRowHighlight();
     initSortable();
   }
+
+  // --- "Who's next" row highlight (client-side only, never saved -- see `currentCheckin`) ------
+
+  function applyCurrentRowHighlight() {
+    Array.prototype.forEach.call(checkinTbody.children, function (tr) {
+      var c = net.checkins[Number(tr.dataset.index)];
+      tr.classList.toggle('current-row', c === currentCheckin && c !== undefined);
+    });
+  }
+
+  // Click anywhere in a row that isn't a button/input/link toggles it as the "current" row --
+  // single selection, click the highlighted row again to clear it. Attached once (delegation),
+  // so it survives renderCheckins() rebuilding the table on every 73/delete/reorder/edit.
+  checkinTbody.addEventListener('click', function (e) {
+    if (e.target.closest('button, input, a')) {
+      return;
+    }
+    var tr = e.target.closest('tr[data-index]');
+    if (!tr) {
+      return;
+    }
+    var c = net.checkins[Number(tr.dataset.index)];
+    currentCheckin = currentCheckin === c ? null : c;
+    applyCurrentRowHighlight();
+  });
 
   // preferred_name / name display + pencil edit (SPEC.md §5.2). callsign itself is never
   // inline-editable in v1 -- delete and re-add through the lookup box instead.

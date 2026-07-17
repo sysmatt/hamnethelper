@@ -113,6 +113,15 @@ tr.checked-out td.actions {
   color: var(--text);
 }
 
+/* "Who's next" cursor -- client-side only, not saved (see net.js's currentCheckin). Amber/warning
+   rather than the accent blue (buttons/active suggestions) or success green (roster badge), so
+   it doesn't get visually confused with either of those existing meanings. Compatible with
+   checked-out styling -- a row can be both "done" (strikethrough) and "currently pointed at". */
+tr.current-row {
+  background: color-mix(in srgb, var(--warning) 22%, transparent);
+  box-shadow: inset 3px 0 0 var(--warning);
+}
+
 .drag-handle {
   cursor: grab;
 }
@@ -322,6 +331,14 @@ body.net-closed .script-notes-panel {
   line-height: 1;
 }
 
+/* Giving exactly one column width:100% in an auto-layout table makes it absorb whatever space
+   is left after every other (content-sized, nowrap) column takes its natural minimum -- rather
+   than sitting at the browser's default ~20-character input width regardless of room available.
+   This is why Notes gets noticeably wider once QRZ/Delete became compact icon buttons. */
+#checkin-table th.notes-col {
+  width: 100%;
+}
+
 .notes-cell input {
   width: 100%;
   padding: 0.3rem;
@@ -412,28 +429,6 @@ button.danger {
   color: var(--accent);
 }
 
-/* Check-in table's QRZ link: styled to match the 73/Delete buttons next to it, rather than
-   looking like a plain text link among button-styled actions.
-   NOTE: selector must out-specificity ".actions a" above (class+element) or its `color:
-   var(--accent)` wins over this rule's white text -- which, against this rule's own
-   accent-colored background, renders as invisible text on a same-colored button. Learned that
-   one from a screenshot: the button looked "blank" but the text was there, just accent-on-accent. */
-.actions a.action-btn-link {
-  display: inline-flex;
-  align-items: center;
-  background: var(--accent);
-  color: #fff;
-  padding: 0.4rem 0.8rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.actions a.action-btn-link:hover {
-  filter: brightness(1.1);
-}
-
 /* Net list: whole row opens the net on click, not just a dedicated Open/Resume button -- see
    net-list.js's delegated tbody click handler. The Name cell is a real <a> (native
    ctrl/middle-click-to-new-tab still works there); other cells are plain text that the delegated
@@ -484,6 +479,36 @@ button.danger {
 
 .icon-action-btn.danger {
   background: var(--danger);
+}
+
+/* The QRZ icon button is an <a>, and ".actions a { color: var(--accent) }" above outranks the
+   plain ".icon-action-btn" rule's white text (class+element beats a single class) -- same
+   accent-on-accent invisible-text bug hit once already with the old QRZ link styling. */
+.actions a.icon-action-btn {
+  color: #fff;
+}
+
+/* "73"/"Un-73": same height/color/radius as .icon-action-btn so it reads as part of the same
+   button family, but auto-width with horizontal padding instead of a fixed square -- "Un-73" is
+   wider than a single glyph and shouldn't look cramped just to match the icon buttons exactly. */
+.toggle-73-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.2rem;
+  min-width: 2.2rem;
+  padding: 0 0.6rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.toggle-73-btn:hover {
+  filter: brightness(1.1);
 }
 
 .download-menu {

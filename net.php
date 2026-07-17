@@ -66,7 +66,7 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $netId)) {
             <th>State</th>
             <th>Check-in</th>
             <th>Check-out</th>
-            <th>Notes</th>
+            <th class="notes-col">Notes</th>
             <th>Actions</th>
           </tr>
         </thead>

@@ -298,10 +298,27 @@ keeps net list data consistent for any future filtering/reporting by type).
     touch/tablet support in case this ever runs off a laptop. Rows renumber (`#` column) after a
     drop.
   - Notes cell is an inline-editable text box (net control's free-text notes about that specific
-    check-in — distinct from the net-wide Script & Notes panel).
-  - Actions: **Delete** (remove row, confirm), **73** (marks checked out — sets
-    `checked_out_at` to now, grays out the row, button becomes **Un-73** which clears
-    `checked_out_at` and restores normal styling), **✏️ Edit name** (see §5.2).
+    check-in — distinct from the net-wide Script & Notes panel). Its column is given `width: 100%`
+    so it absorbs whatever space is left after every other (content-sized) column takes its
+    minimum — this is what actually made room for it once QRZ/Delete became compact icon buttons
+    (see below) rather than text buttons/links.
+  - Actions: **🌐 QRZ** (opens `qrz.com/db/<callsign>` in a new tab), **73/Un-73** (marks checked
+    out — sets `checked_out_at` to now, grays out + strikethroughs the row, button becomes
+    **Un-73** which clears `checked_out_at` and restores normal styling), **🗑 Delete** (remove row,
+    confirm), **✏️ Edit name** (see §5.2). QRZ and Delete are icon-only buttons matching the net
+    list's icon-button convention (§4); **73 deliberately stays text**, not a picture-icon — it's
+    the actual ham-radio nomenclature for signing off, immediately recognizable to the audience in
+    a way an invented glyph wouldn't be. Styled as a pill matching the icon buttons'
+    height/color/radius, just auto-width instead of a fixed square so "Un-73" isn't cramped.
+  - **"Who's next" row highlight** — clicking anywhere in a row that isn't itself a button/input/
+    link toggles that row as the single "current" one (click again to clear it; selecting a
+    different row moves the highlight, it's never more than one at a time). Purpose is purely
+    operational — helping net control keep track of which check-in they're currently working
+    through — so it is **client-side UI state only, never persisted** to the net JSON or included
+    in any save. Styled with a distinct amber/warning accent (not the blue used for
+    buttons/active-suggestions, not the green used for the roster badge, so it can't be confused
+    with either of those existing meanings) and composes fine with the 73'd strikethrough styling
+    — a row can be both "done" and "currently pointed at" at once, they mean different things.
   - Below the table, a one-line status shows how many entries are actually loaded in each lookup
     list — e.g. `Roster: 42 callsigns · HAMDAT cache: 187 records (refreshed 5m ago)` (or "not
     loaded yet" in place of the refreshed time before the first Load). Without this there's no way
