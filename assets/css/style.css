@@ -161,11 +161,10 @@ body.net-closed .script-notes-panel {
 
 .lookup-wrap {
   position: relative;
-  /* Not flex:1 -- the lookup bar now sits directly above (and left-aligned with) the check-in
-     table rather than spanning the full page width, so the input shouldn't stretch to match a
-     potentially very wide table either. A comfortable fixed-ish width keeps it visually close to
-     the Callsign/Name columns it's feeding, rather than a stretched-out bar. */
-  flex: 0 1 28rem;
+  /* The lookup bar lives inside .checkin-panel now, stacked directly above the table (see
+     .workspace below) -- both share that column's width, so flex:1 here just fills it rather
+     than spanning the full page like it would as a page-level sibling. */
+  flex: 1;
   min-width: 12rem;
 }
 
@@ -258,13 +257,19 @@ body.net-closed .script-notes-panel {
   color: #06210f;
 }
 
-/* Script & Notes is now a full-width strip at the top (previously a tall 26%-width side column
-   next to the check-in table) -- freeing the table to use the full page width, and putting the
-   lookup bar directly above (and left-aligned with) the table it feeds, rather than spanning the
-   same width as a panel it has nothing to do with. */
+/* Two columns: Script & Notes on the left, and on the right the lookup bar stacked directly
+   above the check-in table -- both share .checkin-panel's width, so they stay aligned with each
+   other regardless of how wide that column ends up being. */
+.workspace {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
 .script-notes-panel {
-  width: 100%;
-  margin-bottom: 1.25rem;
+  flex: 0 0 26%;
+  min-width: 220px;
+  max-width: 340px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -280,7 +285,20 @@ body.net-closed .script-notes-panel {
 }
 
 .checkin-panel {
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
+}
+
+@media (max-width: 900px) {
+  .workspace {
+    flex-direction: column;
+  }
+  .script-notes-panel {
+    flex: none;
+    width: 100%;
+    max-width: none;
+  }
 }
 
 .lookup-status {

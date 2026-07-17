@@ -39,41 +39,43 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $netId)) {
 </header>
 
 <main>
-  <section class="script-notes-panel">
-    <h2>Script &amp; Notes</h2>
-    <textarea id="script-notes" placeholder="Welcome script, announcements, running notes&hellip;"></textarea>
-    <div id="vditor-script-notes"></div>
-  </section>
+  <div class="workspace">
+    <section class="script-notes-panel">
+      <h2>Script &amp; Notes</h2>
+      <textarea id="script-notes" placeholder="Welcome script, announcements, running notes&hellip;"></textarea>
+      <div id="vditor-script-notes"></div>
+    </section>
 
-  <section class="lookup-bar">
-    <div class="lookup-wrap">
-      <input id="lookup-box" type="text" placeholder="Callsign or name&hellip; (press / to focus)" autocomplete="off">
-      <ul id="lookup-suggestions" class="suggestions" hidden></ul>
-    </div>
-    <button id="upload-roster-btn" type="button">Upload participant list</button>
-    <input id="roster-file-input" type="file" accept=".txt" hidden>
-    <button id="hamdat-settings-btn" type="button">HAMDAT Lookup settings</button>
-  </section>
+    <section class="checkin-panel">
+      <div class="lookup-bar">
+        <div class="lookup-wrap">
+          <input id="lookup-box" type="text" placeholder="Callsign or name&hellip; (press / to focus)" autocomplete="off">
+          <ul id="lookup-suggestions" class="suggestions" hidden></ul>
+        </div>
+        <button id="upload-roster-btn" type="button">Upload participant list</button>
+        <input id="roster-file-input" type="file" accept=".txt" hidden>
+        <button id="hamdat-settings-btn" type="button">HAMDAT Lookup settings</button>
+      </div>
 
-  <section class="checkin-panel">
-    <table id="checkin-table" class="data-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Callsign</th>
-          <th>Name</th>
-          <th>City</th>
-          <th>State</th>
-          <th>Check-in</th>
-          <th>Check-out</th>
-          <th class="notes-col">Notes</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <p id="lookup-status" class="lookup-status"></p>
-  </section>
+      <table id="checkin-table" class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Callsign</th>
+            <th>Name</th>
+            <th>City</th>
+            <th>State</th>
+            <th>Check-in</th>
+            <th>Check-out</th>
+            <th class="notes-col">Notes</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p id="lookup-status" class="lookup-status"></p>
+    </section>
+  </div>
 </main>
 
 <dialog id="hamdat-dialog">

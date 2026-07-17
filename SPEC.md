@@ -269,13 +269,11 @@ keeps net list data consistent for any future filtering/reporting by type).
 
 - Header: net name, net control, status, a "Saved/Saving…" indicator, **Close Net** / **Re-open
   Net** button, and an **Exit to Net List** link. See §5.5 for how these two differ.
-- **Page order, top to bottom: Script & Notes panel → lookup bar → check-in table.** Script &
-  Notes is a full-width strip at the top (not a side column next to the table — an earlier layout
-  had it there, but that both capped the table's width unnecessarily and put the lookup bar
-  spanning the same width as a panel it has nothing to do with). The lookup bar sits directly
-  above, and left-aligned with, the check-in table it feeds — and is deliberately *not*
-  full-width itself (a fixed-ish `28rem`-ish input, not stretched to match the table), so it reads
-  as "the box that populates the table below it" rather than an unrelated full-width bar.
+- **Two-column layout: Script & Notes on the left, lookup bar stacked directly above the
+  check-in table on the right.** The lookup bar lives inside the same column as the table (not as
+  a page-level bar above everything), so the two stay aligned with each other — same left edge,
+  same width — regardless of how wide that column ends up being, rather than either the lookup
+  bar spanning the full page width or Script & Notes eating into the table's column.
 - **Callsign/name lookup box** — single text input. As the operator types, live-filters against
   roster (level-1) merged with hamdat cache (level-2) — matches ranked exact callsign > callsign
   prefix > callsign substring > name substring (hamdat entries only; the roster carries no name
