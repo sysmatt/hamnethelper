@@ -364,6 +364,13 @@ button.danger {
   flex-wrap: wrap;
 }
 
+/* Check-in table only: "73" -> "Un-73" is wider, which was enough to push Delete onto its own
+   line under the shared .actions rule above (flex-wrap: wrap), growing just that row's height.
+   Net list actions (several buttons/links) still want to wrap; this table doesn't. */
+#checkin-table .actions {
+  flex-wrap: nowrap;
+}
+
 .actions a {
   font-size: 0.85rem;
   color: var(--accent);
