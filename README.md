@@ -1,8 +1,7 @@
-> [!WARNING]
-> **This project is a work-in-progress scaffold.** Net list, net creation, autosave, check-ins,
-> close/reopen, drag-reorder, and the script/notes editor work. The hamdat second-level lookup
-> and the CSV/Report/JSON download endpoints are stubbed (return HTTP 501) pending further work.
-> See [SPEC.md](SPEC.md) for the full design.
+> [!NOTE]
+> **All core functionality is implemented**, including the hamdat second-level lookup and the
+> CSV/Report/JSON downloads. The live-filtering suggestions dropdown on the callsign lookup box
+> is not built yet (Enter-to-add works now). See [SPEC.md](SPEC.md) for the full design.
 
 # hamnethelper
 
@@ -44,8 +43,8 @@ hamnethelper/                        ← this repo, cloned into docroot
 │   ├── net_get.php
 │   ├── net_save.php                ← autosave target
 │   ├── net_delete.php
-│   ├── net_download.php            ← TODO: csv/json/report
-│   └── hamdat_lookup.php           ← TODO: hamdat CLI integration
+│   ├── net_download.php            ← csv/json/report downloads
+│   └── hamdat_lookup.php           ← hamdat CLI integration
 ├── assets/
 │   ├── css/style.css
 │   ├── js/                         ← api.js, theme.js, net-list.js, net.js
@@ -77,9 +76,9 @@ shallow clones/pulls never overwrite it:
 
 | Requirement | Notes |
 |---|---|
-| PHP 8.0+ | Core extensions only (`json`, `session`) — nothing non-standard. `exec()` must not be disabled — required once hamdat integration is implemented |
+| PHP 8.0+ | Core extensions only (`json`, `session`) — nothing non-standard. `exec()` must not be disabled — required for the hamdat lookup |
 | Nginx or Apache + PHP-FPM | No special web server directives needed — net data lives outside the docroot, so unlike `simplewebauth` there's no nginx snippet/`.htaccess` rule to install for this app specifically |
-| [hamdat](../hamdat/) | Installed and accessible to the web server process. Assumed already provisioned on target servers (shared with the existing `hamdatweb` deployment) — the app-level integration (`api/hamdat_lookup.php`) is still a stub, but the binary/DB access itself does not need separate provisioning |
+| [hamdat](../hamdat/) | Installed and accessible to the web server process, with a built database (`hamdat --pull`). Assumed already provisioned on target servers (shared with the existing `hamdatweb` deployment) |
 | [simplewebauth](../simplewebauth/) | Deployed as a sibling directory in the docroot |
 
 No `composer`, no `npm`, nothing to build or fetch at deploy time — third-party JS
@@ -194,6 +193,7 @@ optional — omitted keys fall back to the defaults in `lib/config.php`.
 | `nets_dir` | `/var/lib/hamnethelper/nets` | Where net JSON files are stored — must be outside the docroot and writable by the web server user |
 | `app_name` | `HamNetHelper` | Shown in the page header/title |
 | `net_types` | Weekly / Emergency-ARES / Drill-Training / Special Event / Other | Dropdown options on the net creation form. Add, remove, or relabel entries here — no code change needed |
+| `hamdat_temp_dir` | `sys_get_temp_dir()` | Writable temp directory used briefly when generating hamdat query output |
 | `default_hamdat_radius_miles` | `25` | Pre-filled radius in the HAMDAT Lookup Settings dialog for new nets |
 | `autosave_debounce_ms` | `800` | Delay after the last edit before autosaving |
 | `roster_upload_max_bytes` | `65536` | Max size accepted for an uploaded participant-list text file |
@@ -204,17 +204,12 @@ a blank page or a PHP warning.
 
 ---
 
-## Status / what's stubbed
+## Status / what's not built yet
 
-Two `api/` endpoints intentionally return HTTP 501 pending further design/implementation — see the
-TODO comments in each file and the corresponding SPEC.md sections:
-
-- **`api/hamdat_lookup.php`** — hamdat CLI integration (SPEC.md §2, §3.3)
-- **`api/net_download.php`** — CSV / plain-text report / JSON backup downloads (SPEC.md §4)
-
-The callsign/name lookup box currently adds a check-in on Enter (matching against the hamdat
-cache if present) but doesn't yet show a live-filtering dropdown as you type against the roster —
-see the TODO comment in `assets/js/net.js`.
+Everything in SPEC.md is implemented except one piece of UI polish: the callsign/name lookup box
+currently adds a check-in on Enter (matching against the hamdat cache if present) but doesn't yet
+show a live-filtering suggestions dropdown as you type against the roster — see the TODO comment
+in `assets/js/net.js`.
 
 ---
 

@@ -18,6 +18,11 @@ return [
     // Full path to the hamdat SQLite database
     'hamdat_db' => '/home/ubuntu/.hamdat/hamdat.db',
 
+    // Writable temp directory used briefly when generating hamdat query output. Defaults to
+    // sys_get_temp_dir() if omitted -- override only if that default isn't writable by the web
+    // server user.
+    // 'hamdat_temp_dir' => '/tmp',
+
     // Directory where net JSON files are stored. MUST be outside the docroot and writable by
     // the web server user (e.g. www-data). See SPEC.md §2.
     'nets_dir' => '/var/lib/hamnethelper/nets',

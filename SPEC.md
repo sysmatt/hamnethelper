@@ -211,11 +211,20 @@ keeps net list data consistent for any future filtering/reporting by type).
 - Header: net name, net control, status, a "Saved/Saving…" indicator, **Close Net** / **Re-open
   Net** button, and an **Exit to Net List** link. See §5.5 for how these two differ.
 - **Callsign/name lookup box** — single text input. As the operator types, live-filters against
-  roster (level-1) then hamdat cache (level-2), showing a dropdown of matches. Selecting a match
-  appends a new row to the check-in table pre-filled from that match. Pressing Enter with no match
-  appends a row with just the typed callsign and no `name` — the common case for a visitor or
-  unlisted station not on the roster or in hamdat; the operator can still set a `preferred_name`
-  via the pencil icon (§5.2).
+  roster (level-1) merged with hamdat cache (level-2) — matches ranked exact callsign > callsign
+  prefix > callsign substring > name substring (hamdat entries only; the roster carries no name
+  data). Shows up to 8 ranked results in a dropdown, first one highlighted by default. Arrow
+  keys move the highlight, Enter selects the highlighted suggestion (or, if the dropdown has no
+  matches, adds a row with just the typed callsign and no `name` — the visitor/unlisted-station
+  case; the operator can still set a `preferred_name` via the pencil icon, §5.2). Escape closes
+  the dropdown without clearing the typed text.
+  - **Global "/" shortcut**: pressing `/` anywhere on the page (when focus isn't already in a
+    text field, including the Script & Notes editor) refocuses this box, select-all, so the
+    operator can jump back to it without reaching for the mouse.
+  - If `/` ends up as the box's own leading character (e.g. the shortcut fires while the box
+    already had focus, so the keystroke types itself in instead of being intercepted), it's
+    silently stripped — but only a *leading* `/`, since callsigns legitimately contain `/`
+    mid-string for portable/mobile suffixes (`W1AW/4`, `/QRP`, `/MM`).
 - **"Upload participant list" button** — file picker for a plain text file, one callsign per line.
   Replaces the net's `roster` outright (new upload is treated as authoritative). This list is a
   convenience shortlist of likely check-ins, not a restriction — any callsign can still be

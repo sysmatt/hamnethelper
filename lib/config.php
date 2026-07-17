@@ -19,6 +19,7 @@ function hnh_config(): array
     $defaults = [
         'hamdat_bin' => '/usr/local/bin/hamdat',
         'hamdat_db' => null,
+        'hamdat_temp_dir' => sys_get_temp_dir(),
         'nets_dir' => '/var/lib/hamnethelper/nets',
         'app_name' => 'HamNetHelper',
         'net_types' => [

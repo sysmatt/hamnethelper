@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   var scriptNotesEl = document.getElementById('script-notes');
   var checkinTbody = document.querySelector('#checkin-table tbody');
   var lookupBox = document.getElementById('lookup-box');
+  var suggestionsEl = document.getElementById('lookup-suggestions');
   var uploadBtn = document.getElementById('upload-roster-btn');
   var uploadInput = document.getElementById('roster-file-input');
 
@@ -25,6 +26,9 @@ document.addEventListener('DOMContentLoaded', async function () {
   var saveDebounceMs = 800;
   var saveInFlight = false;
   var dirtyWhileSaving = false;
+  var candidates = []; // merged roster (level-1) + hamdat cache (level-2), rebuilt on data change
+  var suggestions = []; // current filtered/ranked matches for the lookup box
+  var activeIndex = -1;
 
   // --- Autosave (SPEC.md §2) -----------------------------------------------------------------
 
@@ -244,7 +248,13 @@ document.addEventListener('DOMContentLoaded', async function () {
       });
       return;
     }
-    mde = new EasyMDE({ element: scriptNotesEl, spellChecker: false, status: false });
+    mde = new EasyMDE({
+      element: scriptNotesEl,
+      spellChecker: false,
+      status: false,
+      minHeight: '150px', // narrow side panel (see .script-notes-panel) -- keep it compact
+      toolbar: ['bold', 'italic', 'heading', '|', 'unordered-list', 'ordered-list', '|', 'preview'],
+    });
     mde.codemirror.on('change', function () {
       net.script_notes = mde.value();
       scheduleSave();
@@ -266,38 +276,231 @@ document.addEventListener('DOMContentLoaded', async function () {
   });
 
   // --- Callsign/name lookup box (SPEC.md §5.1) --------------------------------------------
-  // TODO: live-filtering dropdown against roster (level-1) + hamdat cache (level-2) as the
-  // operator types. For now, Enter adds a row immediately, matching only against the hamdat
-  // cache (roster carries no name data -- see SPEC.md §3.1).
+  //
+  // Live-filters against the roster (level-1, callsigns only -- no name data, see SPEC.md
+  // §3.1) merged with the hamdat cache (level-2, callsign+name+city+state). `candidates` is
+  // the merged set, rebuilt whenever the underlying roster or hamdat cache changes; `suggestions`
+  // is the current filtered/ranked view of it for whatever's typed right now.
 
-  lookupBox.addEventListener('keydown', function (e) {
-    if (e.key !== 'Enter') {
-      return;
-    }
-    var callsign = lookupBox.value.trim().toUpperCase();
-    if (!callsign) {
-      return;
-    }
-
-    var match = ((net.hamdat_lookup && net.hamdat_lookup.cached_results) || [])
-      .find(function (r) { return (r.callsign || '').toUpperCase() === callsign; });
-
+  function addCheckin(callsign, name, city, state) {
     net.checkins = net.checkins || [];
     net.checkins.push({
       order: net.checkins.length + 1,
       callsign: callsign,
-      name: match ? match.name : '',
+      name: name || '',
       preferred_name: null,
-      city: match ? match.city : '',
-      state: match ? match.state : '',
+      city: city || '',
+      state: state || '',
       checked_in_at: new Date().toISOString(),
       checked_out_at: null,
       notes: '',
     });
-
-    lookupBox.value = '';
     renderCheckins();
     scheduleSave();
+  }
+
+  function rebuildCandidates() {
+    var map = {};
+
+    (net.roster || []).forEach(function (cs) {
+      var key = String(cs || '').trim().toUpperCase();
+      if (!key) {
+        return;
+      }
+      map[key] = map[key] || { callsign: key, name: '', city: '', state: '', inRoster: false };
+      map[key].inRoster = true;
+    });
+
+    ((net.hamdat_lookup && net.hamdat_lookup.cached_results) || []).forEach(function (r) {
+      var key = String(r.callsign || '').trim().toUpperCase();
+      if (!key) {
+        return;
+      }
+      map[key] = map[key] || { callsign: key, name: '', city: '', state: '', inRoster: false };
+      map[key].name = r.name || map[key].name;
+      map[key].city = r.city || map[key].city;
+      map[key].state = r.state || map[key].state;
+    });
+
+    candidates = Object.keys(map).map(function (k) { return map[k]; });
+  }
+
+  // Match priority: exact callsign > callsign prefix > callsign substring > name substring.
+  // Lower score wins; ties broken alphabetically by callsign.
+  function filterCandidates(query) {
+    var q = query.trim().toUpperCase();
+    if (!q) {
+      return [];
+    }
+    return candidates
+      .map(function (c) {
+        var score;
+        if (c.callsign === q) {
+          score = 0;
+        } else if (c.callsign.indexOf(q) === 0) {
+          score = 1;
+        } else if (c.callsign.indexOf(q) !== -1) {
+          score = 2;
+        } else if (c.name && c.name.toUpperCase().indexOf(q) !== -1) {
+          score = 3;
+        } else {
+          return null;
+        }
+        var copy = Object.assign({}, c);
+        copy.score = score;
+        return copy;
+      })
+      .filter(Boolean)
+      .sort(function (a, b) { return a.score - b.score || a.callsign.localeCompare(b.callsign); })
+      .slice(0, 8);
+  }
+
+  function renderSuggestions(list) {
+    suggestions = list;
+    activeIndex = list.length ? 0 : -1;
+    suggestionsEl.innerHTML = '';
+
+    if (!list.length) {
+      suggestionsEl.hidden = true;
+      return;
+    }
+
+    list.forEach(function (c, idx) {
+      var li = document.createElement('li');
+      li.className = idx === activeIndex ? 'active' : '';
+
+      var callsignSpan = document.createElement('span');
+      callsignSpan.className = 'callsign';
+      callsignSpan.textContent = c.callsign;
+      li.appendChild(callsignSpan);
+
+      var detailSpan = document.createElement('span');
+      detailSpan.className = 'detail';
+      if (c.name) {
+        var where = [c.city, c.state].filter(Boolean).join(', ');
+        detailSpan.textContent = c.name + (where ? ' — ' + where : '');
+      } else if (c.inRoster) {
+        detailSpan.textContent = 'on roster';
+      }
+      li.appendChild(detailSpan);
+
+      // mousedown (not click) fires before the input's blur, and preventDefault on it keeps
+      // focus on the input entirely -- so selection works without a blur/close race.
+      li.addEventListener('mousedown', function (e) {
+        e.preventDefault();
+        selectCandidate(c);
+      });
+
+      suggestionsEl.appendChild(li);
+    });
+
+    suggestionsEl.hidden = false;
+  }
+
+  function highlightActive() {
+    Array.prototype.forEach.call(suggestionsEl.children, function (li, idx) {
+      li.classList.toggle('active', idx === activeIndex);
+    });
+  }
+
+  function closeSuggestions() {
+    suggestions = [];
+    activeIndex = -1;
+    suggestionsEl.hidden = true;
+    suggestionsEl.innerHTML = '';
+  }
+
+  function selectCandidate(c) {
+    addCheckin(c.callsign, c.name, c.city, c.state);
+    lookupBox.value = '';
+    closeSuggestions();
+    lookupBox.focus();
+  }
+
+  lookupBox.addEventListener('input', function () {
+    // A leading "/" means the "/"-to-focus shortcut fired while the box already had focus (so
+    // the "/" typed itself in instead of being intercepted) -- strip it silently. Only ever the
+    // leading slash: callsigns legitimately contain "/" mid-string (portable/mobile suffixes
+    // like W1AW/4 or /QRP), so those must never be touched.
+    while (lookupBox.value.charAt(0) === '/') {
+      lookupBox.value = lookupBox.value.slice(1);
+    }
+    renderSuggestions(filterCandidates(lookupBox.value));
+  });
+
+  lookupBox.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowDown') {
+      if (!suggestions.length) {
+        return;
+      }
+      e.preventDefault();
+      activeIndex = (activeIndex + 1) % suggestions.length;
+      highlightActive();
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      if (!suggestions.length) {
+        return;
+      }
+      e.preventDefault();
+      activeIndex = (activeIndex - 1 + suggestions.length) % suggestions.length;
+      highlightActive();
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      if (suggestions.length) {
+        e.preventDefault();
+        closeSuggestions();
+      }
+      return;
+    }
+
+    if (e.key !== 'Enter') {
+      return;
+    }
+    e.preventDefault();
+
+    if (activeIndex >= 0 && suggestions[activeIndex]) {
+      selectCandidate(suggestions[activeIndex]);
+      return;
+    }
+
+    // No suggestion matched -- add whatever was typed as a raw, unmatched check-in (visitor /
+    // unlisted station, see SPEC.md §3.1).
+    var callsign = lookupBox.value.trim().toUpperCase();
+    if (!callsign) {
+      return;
+    }
+    addCheckin(callsign, '', '', '');
+    lookupBox.value = '';
+    closeSuggestions();
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!suggestionsEl.hidden && !lookupBox.contains(e.target) && !suggestionsEl.contains(e.target)) {
+      closeSuggestions();
+    }
+  });
+
+  // Press "/" anywhere on the page to jump back to the lookup box, unless the operator is
+  // already typing in some other field (including the EasyMDE/CodeMirror editor, which reports
+  // its focused element as a plain TEXTAREA).
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== '/') {
+      return;
+    }
+    var active = document.activeElement;
+    var tag = active ? active.tagName : '';
+    var isEditable = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+      || (active && active.isContentEditable);
+    if (isEditable) {
+      return;
+    }
+    e.preventDefault();
+    lookupBox.focus();
+    lookupBox.select();
   });
 
   // --- Upload participant list (SPEC.md §5.1) ----------------------------------------------
@@ -319,6 +522,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         .split(/\r?\n/)
         .map(function (line) { return line.trim().toUpperCase(); })
         .filter(function (line) { return line.length > 0; });
+      rebuildCandidates();
       scheduleSave();
       alert('Loaded ' + net.roster.length + ' callsigns into the roster.');
     };
@@ -347,10 +551,9 @@ document.addEventListener('DOMContentLoaded', async function () {
       });
       net.hamdat_lookup.cached_results = result.results || [];
       net.hamdat_lookup.last_refreshed_at = new Date().toISOString();
+      rebuildCandidates();
       renderHamdatRefreshedLabel();
     } catch (err) {
-      // Expected for now -- api/hamdat_lookup.php is a 501 stub pending the hamdat CLI
-      // integration (SPEC.md §2, §3.3).
       alert('HAMDAT lookup: ' + err.message);
     }
 
@@ -371,6 +574,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     var config = await HNH.getConfig();
     saveDebounceMs = config.autosave_debounce_ms || 800;
     net = await HNH.api('api/net_get.php?id=' + encodeURIComponent(netId));
+    rebuildCandidates();
     initScriptNotesEditor();
     setIndicator('saved');
     render();
