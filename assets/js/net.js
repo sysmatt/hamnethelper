@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   var sortable = null;
   var saveTimer = null;
   var saveDebounceMs = 800;
+  var suggestionLimit = 15;
   var saveInFlight = false;
   var dirtyWhileSaving = false;
   var candidates = []; // merged roster (level-1) + hamdat cache (level-2), rebuilt on data change
@@ -113,7 +114,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   function renderHamdatRefreshedLabel() {
     var ts = net.hamdat_lookup && net.hamdat_lookup.last_refreshed_at;
     hamdatLastRefreshed.textContent = ts
-      ? 'Last refreshed: ' + new Date(ts).toLocaleString()
+      ? 'Last refreshed: ' + HNH.formatDateTime(ts)
       : 'Not loaded yet.';
   }
 
@@ -132,8 +133,8 @@ document.addEventListener('DOMContentLoaded', async function () {
         '<td><span class="name-cell"></span></td>' +
         '<td>' + HNH.escapeHtml(c.city || '') + '</td>' +
         '<td>' + HNH.escapeHtml(c.state || '') + '</td>' +
-        '<td>' + formatTime(c.checked_in_at) + '</td>' +
-        '<td>' + formatTime(c.checked_out_at) + '</td>' +
+        '<td>' + HNH.formatTime(c.checked_in_at) + '</td>' +
+        '<td>' + HNH.formatTime(c.checked_out_at) + '</td>' +
         '<td class="notes-cell"></td>' +
         '<td class="actions"></td>';
 
@@ -481,7 +482,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         }
         return a.callsign.localeCompare(b.callsign);
       })
-      .slice(0, 8);
+      .slice(0, suggestionLimit);
   }
 
   function renderSuggestions(list) {
@@ -713,17 +714,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // --- Boot ------------------------------------------------------------------------------
 
-  function formatTime(iso) {
-    if (!iso) {
-      return '';
-    }
-    var d = new Date(iso);
-    return isNaN(d) ? iso : d.toLocaleTimeString();
-  }
-
   try {
     var config = await HNH.getConfig();
     saveDebounceMs = config.autosave_debounce_ms || 800;
+    suggestionLimit = config.lookup_suggestion_limit || 15;
     net = await HNH.api('api/net_get.php?id=' + encodeURIComponent(netId));
     rebuildCandidates();
     initScriptNotesEditor();

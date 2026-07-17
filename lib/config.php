@@ -33,6 +33,7 @@ function hnh_config(): array
         'autosave_debounce_ms' => 800,
         'roster_upload_max_bytes' => 65536,
         'default_theme' => 'dark',
+        'lookup_suggestion_limit' => 15,
     ];
 
     $configFile = __DIR__ . '/../../hamnethelper-config.php';

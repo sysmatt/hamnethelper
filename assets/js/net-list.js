@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       tr.appendChild(nameTd);
 
       var dateTd = document.createElement('td');
-      dateTd.textContent = formatDate(net.created_at);
+      dateTd.textContent = HNH.formatDateTime(net.created_at);
       tr.appendChild(dateTd);
 
       var ncTd = document.createElement('td');
@@ -309,14 +309,6 @@ document.addEventListener('DOMContentLoaded', async function () {
       tr.appendChild(actionsTd);
       tbody.appendChild(tr);
     });
-  }
-
-  function formatDate(iso) {
-    if (!iso) {
-      return '';
-    }
-    var d = new Date(iso);
-    return isNaN(d) ? iso : d.toLocaleString();
   }
 
   loadNets();

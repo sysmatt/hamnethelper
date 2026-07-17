@@ -62,3 +62,33 @@ HNH.escapeHtml = function (s) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
   });
 };
+
+// 24-hour, no seconds, everywhere -- shared so every time/date display in the app is consistent.
+HNH.formatTime = function (iso) {
+  if (!iso) {
+    return '';
+  }
+  var d = new Date(iso);
+  if (isNaN(d)) {
+    return iso;
+  }
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+};
+
+HNH.formatDateTime = function (iso) {
+  if (!iso) {
+    return '';
+  }
+  var d = new Date(iso);
+  if (isNaN(d)) {
+    return iso;
+  }
+  return d.toLocaleString([], {
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+};

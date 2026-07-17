@@ -15,4 +15,5 @@ hnh_json([
     'roster_upload_max_bytes' => $hnh_config['roster_upload_max_bytes'],
     'default_theme' => $hnh_config['default_theme'],
     'default_hamdat_radius_miles' => $hnh_config['default_hamdat_radius_miles'],
+    'lookup_suggestion_limit' => $hnh_config['lookup_suggestion_limit'],
 ]);

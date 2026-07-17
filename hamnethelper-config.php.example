@@ -55,6 +55,9 @@ return [
     // Max size (bytes) accepted for an uploaded participant-list text file.
     'roster_upload_max_bytes' => 65536,
 
+    // Max number of ranked matches shown in the callsign/name lookup dropdown (SPEC.md §5.1).
+    'lookup_suggestion_limit' => 15,
+
     // 'dark' or 'light' — the theme shown before the operator's own localStorage preference
     // (if any) is applied.
     'default_theme' => 'dark',

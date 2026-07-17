@@ -267,8 +267,9 @@ keeps net list data consistent for any future filtering/reporting by type).
   still wins outright regardless of roster status — typing the full call is effectively
   confirming identity either way.) Roster matches are also visually distinct in the dropdown: a
   green "★ Roster" badge and a tinted/accented row, shown whenever a callsign is on the roster
-  even if it also matched via the hamdat cache. Shows up to 8 ranked results in a dropdown, first
-  one highlighted by default. Arrow keys move the highlight, Enter selects the highlighted
+  even if it also matched via the hamdat cache. Shows up to `lookup_suggestion_limit` ranked
+  results in a dropdown (config-driven, default 15 — see Configuration reference in README.md),
+  first one highlighted by default. Arrow keys move the highlight, Enter selects the highlighted
   suggestion (or, if the dropdown has no matches, adds a row with just the typed callsign and no
   `name` — the visitor/unlisted-station case; the operator can still set a `preferred_name` via
   the pencil icon, §5.2). Escape closes the dropdown without clearing the typed text.
@@ -296,7 +297,11 @@ keeps net list data consistent for any future filtering/reporting by type).
 - **Script & Notes panel** — a persistent text area (or collapsible panel) separate from the
   check-in table, for the net-wide welcome script, announcements, and running notes. See §5.3.
 - **Check-in table**: columns `# · Callsign · Name · City · State · Check-in time · Check-out time
-  · Notes · Actions`.
+  · Notes · Actions`. All times/dates app-wide (check-in/out times, net list dates, "last
+  refreshed") are shown 24-hour, no seconds — `HNH.formatTime()`/`HNH.formatDateTime()` in
+  `assets/js/api.js`, shared everywhere rather than each page picking its own locale-default
+  format (which is inconsistently 12- or 24-hour depending on browser locale, and always includes
+  seconds by default).
   - Rows added sequentially as operator checks people in.
   - Drag-and-drop reordering via [SortableJS](https://github.com/SortableJS/Sortable) (vendored as
     a single static JS asset, no build step) — chosen over native HTML5 drag-and-drop for reliable
