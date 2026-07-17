@@ -61,6 +61,7 @@ function hnh_user(): string
 
 require __DIR__ . '/../lib/config.php';
 require __DIR__ . '/../lib/net_store.php';
+require __DIR__ . '/../lib/hamdat.php';
 
 try {
     $hnh_config = hnh_config();

@@ -193,10 +193,21 @@ Per-row actions:
   and `script_notes`. The operator can edit any field before submitting — nothing is created until
   they confirm. On submit: fresh `checkins: []`, new `id`, new `created_at`, `status: "open"`,
   `ended_at: null`, and a fresh (empty) `hamdat_lookup.cached_results` — the zip/radius carries over
-  but the cache itself is not copied, so the operator re-runs Load for current data.
+  but the cache itself is not copied; if the zip is still filled in, submitting re-runs the lookup
+  immediately (see below) rather than requiring a separate trip into Lookup Settings.
 
 Page-level action: **Begin New Net** — opens a blank version of the same creation form (name,
 net_type, net control, frequency, description, hamdat zip/radius) and creates the file on submit.
+
+**If the ZIP field is filled in on submit** (either flow above), net creation runs the hamdat
+lookup immediately server-side and populates `hamdat_lookup.cached_results`/`last_refreshed_at`
+before the net is even opened — the operator shouldn't have to fill in the same zip/radius twice
+(once on this form, again in Lookup Settings) to get the data they already asked for. This is
+best-effort: a failed lookup (bad zip, hamdat unavailable) never blocks net creation — the net is
+still created, and the error is surfaced back to the client (`hamdat_lookup_error` on the create
+response) as a non-blocking warning; the operator can retry from Lookup Settings once the net is
+open. The create dialog's submit button shows "Creating & looking up HAMDAT…" instead of a plain
+"Creating…" when a zip is present, since the request can take a few seconds longer.
 
 `net_type` is a fixed dropdown: **Weekly · Emergency/ARES · Drill/Training · Special Event ·
 Other** (exact labels/values open to adjustment, but the set stays fixed rather than free text —
@@ -231,7 +242,9 @@ keeps net list data consistent for any future filtering/reporting by type).
   checked in.
 - **"HAMDAT Lookup settings" button** — opens a dialog: zip code + radius (miles) fields, a
   **Load/Refresh** button that runs the hamdat query and (re)populates the persisted level-2 cache,
-  and a "Last refreshed: <relative time>" indicator.
+  and a "Last refreshed: <relative time>" indicator. While the query runs, the button disables and
+  reads "Loading…" and the indicator reads "Querying hamdat…" — a hamdat call can take a few
+  seconds, and giving no feedback while it's in flight reads as broken rather than slow.
 - **Script & Notes panel** — a persistent text area (or collapsible panel) separate from the
   check-in table, for the net-wide welcome script, announcements, and running notes. See §5.3.
 - **Check-in table**: columns `# · Callsign · Name · City · State · Check-in time · Check-out time

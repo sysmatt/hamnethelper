@@ -552,6 +552,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     net.hamdat_lookup.zip = hamdatZip.value.trim();
     net.hamdat_lookup.radius_miles = Number(hamdatRadius.value) || 0;
 
+    var originalLabel = hamdatLoadBtn.textContent;
+    hamdatLoadBtn.disabled = true;
+    hamdatLoadBtn.textContent = 'Loading…';
+    hamdatLastRefreshed.textContent = 'Querying hamdat…';
+
     try {
       var result = await HNH.api('api/hamdat_lookup.php', {
         method: 'POST',
@@ -560,9 +565,12 @@ document.addEventListener('DOMContentLoaded', async function () {
       net.hamdat_lookup.cached_results = result.results || [];
       net.hamdat_lookup.last_refreshed_at = new Date().toISOString();
       rebuildCandidates();
-      renderHamdatRefreshedLabel();
     } catch (err) {
       alert('HAMDAT lookup: ' + err.message);
+    } finally {
+      renderHamdatRefreshedLabel(); // restores "Last refreshed" on success, or prior state on failure
+      hamdatLoadBtn.disabled = false;
+      hamdatLoadBtn.textContent = originalLabel;
     }
 
     scheduleSave();

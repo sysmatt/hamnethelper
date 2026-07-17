@@ -43,9 +43,12 @@ document.addEventListener('DOMContentLoaded', async function () {
     dialog.close();
   });
 
+  var submitBtn = document.getElementById('new-net-submit');
+
   form.addEventListener('submit', async function (e) {
     e.preventDefault();
     var fd = new FormData(form);
+    var zip = fd.get('hamdat_zip');
 
     var payload = {
       name: fd.get('name'),
@@ -54,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       frequency: fd.get('frequency'),
       description: fd.get('description'),
       hamdat_lookup: {
-        zip: fd.get('hamdat_zip'),
+        zip: zip,
         radius_miles: Number(fd.get('hamdat_radius')) || 0,
       },
     };
@@ -66,6 +69,14 @@ document.addEventListener('DOMContentLoaded', async function () {
       payload.script_notes = form.dataset.carryScriptNotes;
     }
 
+    // A filled-in ZIP means net_create.php runs the hamdat lookup synchronously as part of
+    // creation (see api/net_create.php) -- that can take a few seconds, so say so rather than
+    // leaving the operator staring at an unresponsive dialog.
+    var originalLabel = submitBtn.textContent;
+    submitBtn.disabled = true;
+    cancelBtn.disabled = true;
+    submitBtn.textContent = /^\d{5}$/.test(zip) ? 'Creating & looking up HAMDAT…' : 'Creating…';
+
     let net;
     try {
       net = await HNH.api('api/net_create.php', {
@@ -74,7 +85,17 @@ document.addEventListener('DOMContentLoaded', async function () {
       });
     } catch (err) {
       alert('Could not create net: ' + err.message);
+      submitBtn.disabled = false;
+      cancelBtn.disabled = false;
+      submitBtn.textContent = originalLabel;
       return;
+    }
+
+    if (net.hamdat_lookup_error) {
+      alert(
+        'Net created, but the HAMDAT lookup failed: ' + net.hamdat_lookup_error +
+        '\n\nYou can retry it from HAMDAT Lookup Settings once the net is open.'
+      );
     }
 
     window.location.href = 'net.php?id=' + encodeURIComponent(net.id);
