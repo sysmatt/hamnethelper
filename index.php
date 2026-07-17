@@ -32,6 +32,8 @@ try {
 <main>
   <div class="toolbar">
     <button id="begin-new-net" type="button">Begin New Net</button>
+    <button id="import-net-btn" type="button">Import Net</button>
+    <input id="import-net-input" type="file" accept=".json" hidden>
   </div>
 
   <table id="net-list" class="data-table">

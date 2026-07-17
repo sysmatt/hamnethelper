@@ -40,6 +40,7 @@ hamnethelper/                        ← this repo, cloned into docroot
 │   ├── config.php                  ← public config subset for the frontend
 │   ├── nets_list.php
 │   ├── net_create.php
+│   ├── net_import.php              ← restores a downloaded JSON backup as a new net
 │   ├── net_get.php
 │   ├── net_save.php                ← autosave target
 │   ├── net_delete.php

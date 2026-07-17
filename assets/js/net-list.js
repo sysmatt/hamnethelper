@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', async function () {
   var tbody = document.querySelector('#net-list tbody');
   var beginBtn = document.getElementById('begin-new-net');
+  var importBtn = document.getElementById('import-net-btn');
+  var importInput = document.getElementById('import-net-input');
   var dialog = document.getElementById('new-net-dialog');
   var form = document.getElementById('new-net-form');
   var cancelBtn = document.getElementById('new-net-cancel');
@@ -41,6 +43,60 @@ document.addEventListener('DOMContentLoaded', async function () {
   beginBtn.addEventListener('click', openBlankForm);
   cancelBtn.addEventListener('click', function () {
     dialog.close();
+  });
+
+  // --- Import a previously-downloaded net JSON backup (SPEC.md §4) -----------------------
+  // Always becomes a brand-new net (fresh id/created_at) regardless of the uploaded file's own
+  // values -- see api/net_import.php / lib/net_store.php's hnh_import_net().
+
+  importBtn.addEventListener('click', function () {
+    importInput.click();
+  });
+
+  importInput.addEventListener('change', function () {
+    var file = importInput.files[0];
+    if (!file) {
+      return;
+    }
+
+    var originalLabel = importBtn.textContent;
+    importBtn.disabled = true;
+    importBtn.textContent = 'Importing…';
+
+    function reset() {
+      importBtn.disabled = false;
+      importBtn.textContent = originalLabel;
+      importInput.value = '';
+    }
+
+    var reader = new FileReader();
+    reader.onload = async function () {
+      var parsed;
+      try {
+        parsed = JSON.parse(String(reader.result));
+      } catch (e) {
+        alert('That file is not valid JSON.');
+        reset();
+        return;
+      }
+
+      let net;
+      try {
+        net = await HNH.withMinDuration(function () {
+          return HNH.api('api/net_import.php', {
+            method: 'POST',
+            body: JSON.stringify(parsed),
+          });
+        }, 500);
+      } catch (err) {
+        alert('Could not import net: ' + err.message);
+        reset();
+        return;
+      }
+
+      window.location.href = 'net.php?id=' + encodeURIComponent(net.id);
+    };
+    reader.readAsText(file);
   });
 
   var submitBtn = document.getElementById('new-net-submit');

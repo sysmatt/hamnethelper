@@ -142,3 +142,59 @@ function hnh_new_net(array $fields): array
         'checkins' => [],
     ];
 }
+
+/**
+ * Restores a net from a previously-downloaded JSON backup (api/net_download.php's format=json --
+ * see SPEC.md §4). Unlike hnh_new_net(), this preserves everything -- checkins, roster,
+ * script_notes, hamdat_lookup including its cached_results, status, ended_at -- since an import
+ * is meant to be a faithful restore, not a fresh start.
+ *
+ * The one thing it never preserves is identity: `id`/`created_at`/`updated_at` are always
+ * reassigned, regardless of whatever the uploaded file's own values were. An import is always a
+ * new net as far as this server is concerned -- restoring the same backup twice, or a backup
+ * whose id happens to collide with an existing net (e.g. re-uploading to the same server it came
+ * from), must never silently overwrite anything.
+ *
+ * $uploaded is merged over a full-shape skeleton (not just whitelisted fields) so a
+ * hand-edited or partially-missing backup can't produce a structurally invalid net file.
+ */
+function hnh_import_net(array $uploaded): array
+{
+    $skeleton = [
+        'schema_version' => 1,
+        'name' => '',
+        'net_type' => '',
+        'net_control' => '',
+        'frequency' => '',
+        'description' => '',
+        'status' => 'open',
+        'ended_at' => null,
+        'script_notes' => '',
+        'hamdat_lookup' => [
+            'zip' => '',
+            'radius_miles' => 0,
+            'cached_results' => [],
+            'last_refreshed_at' => null,
+        ],
+        'roster' => [],
+        'checkins' => [],
+    ];
+
+    $net = array_replace($skeleton, $uploaded);
+
+    $net['roster'] = array_values(is_array($net['roster'] ?? null) ? $net['roster'] : []);
+    $net['checkins'] = array_values(is_array($net['checkins'] ?? null) ? $net['checkins'] : []);
+    if (!is_array($net['hamdat_lookup'] ?? null)) {
+        $net['hamdat_lookup'] = $skeleton['hamdat_lookup'];
+    } else {
+        $net['hamdat_lookup'] = array_replace($skeleton['hamdat_lookup'], $net['hamdat_lookup']);
+    }
+    $net['status'] = in_array($net['status'] ?? null, ['open', 'closed'], true) ? $net['status'] : 'open';
+
+    $now = date('c');
+    $net['id'] = hnh_uuid_v4();
+    $net['created_at'] = $now;
+    $net['updated_at'] = $now;
+
+    return $net;
+}

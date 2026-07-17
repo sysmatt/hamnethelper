@@ -206,6 +206,18 @@ to indistinguishable filenames.
 Page-level action: **Begin New Net** — opens a blank version of the same creation form (name,
 net_type, net control, frequency, description, hamdat zip/radius) and creates the file on submit.
 
+Page-level action: **Import Net** — restores a previously-downloaded JSON backup (the "Download
+JSON backup" link above) as a new net. File picker → read client-side → `POST api/net_import.php`
+with the parsed JSON as the body. Unlike "Start new net like this one," this is a **faithful
+restore**: checkins, roster, script_notes, hamdat cache, status, and ended_at all carry over
+exactly as they were. The one thing that never carries over is identity — `id`, `created_at`, and
+`updated_at` are always reassigned fresh, regardless of whatever the uploaded file's own values
+were. This is deliberate: importing the same backup twice, or a backup whose `id` happens to
+collide with a net that already exists on this server (e.g. re-uploading to the server it came
+from), must never silently overwrite anything — an import always produces one more net, never
+fewer. A file that doesn't look like a hamnethelper backup (no `checkins` key) is rejected with a
+clear error rather than attempting a best-effort partial import.
+
 **If the ZIP field is filled in on submit** (either flow above), net creation runs the hamdat
 lookup immediately server-side and populates `hamdat_lookup.cached_results`/`last_refreshed_at`
 before the net is even opened — the operator shouldn't have to fill in the same zip/radius twice
