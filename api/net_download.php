@@ -1,9 +1,15 @@
 <?php
 /**
  * Downloads for a net (SPEC.md §4):
- *   ?id=<id>&format=json    -- raw net data, as-is (the "JSON backup" download)
- *   ?id=<id>&format=csv     -- check-in table only, composed preferred_name(name) column
- *   ?id=<id>&format=report  -- plain-text summary meant to be pasted into a follow-up email
+ *   ?id=<id>&format=json           -- raw net data, as-is (the "JSON backup" download)
+ *   ?id=<id>&format=csv            -- check-in table only, composed preferred_name(name) column
+ *   ?id=<id>&format=report         -- plain-text summary meant to be pasted into a follow-up
+ *                                     email; omits per-check-in Notes (those are often just
+ *                                     internal to the net controller)
+ *   ?id=<id>&format=report&notes=1 -- same report, with per-check-in Notes included
+ *
+ * Every filename includes the net's creation date (see hnh_download_date()) so nets that share a
+ * name (e.g. a weekly net run under the same title every week) produce distinguishable downloads.
  */
 
 require __DIR__ . '/_bootstrap.php';
@@ -20,6 +26,18 @@ function hnh_download_slug(string $s): string
 {
     $slug = trim((string) preg_replace('/[^a-zA-Z0-9]+/', '-', $s), '-');
     return $slug !== '' ? strtolower($slug) : 'net';
+}
+
+function hnh_download_date(?string $iso): string
+{
+    if (!$iso) {
+        return 'undated';
+    }
+    try {
+        return (new DateTime($iso))->format('Y-m-d');
+    } catch (Exception $e) {
+        return 'undated';
+    }
 }
 
 function hnh_checkin_display_name(array $checkin): string
@@ -53,7 +71,7 @@ function hnh_report_time(?string $iso): string
     }
 }
 
-$baseName = hnh_download_slug($net['name'] ?? 'net');
+$baseName = hnh_download_slug($net['name'] ?? 'net') . '-' . hnh_download_date($net['created_at'] ?? null);
 
 switch ($format) {
     case 'json':
@@ -83,8 +101,10 @@ switch ($format) {
         exit;
 
     case 'report':
+        $includeNotes = !empty($_GET['notes']);
+        $reportFilenameSuffix = $includeNotes ? '-report-with-notes.txt' : '-report.txt';
         header('Content-Type: text/plain; charset=utf-8');
-        header('Content-Disposition: attachment; filename="' . $baseName . '-report.txt"');
+        header('Content-Disposition: attachment; filename="' . $baseName . $reportFilenameSuffix . '"');
 
         $title = $net['name'] ?: '(untitled net)';
         $lines = [$title, str_repeat('=', strlen($title))];
@@ -125,7 +145,7 @@ switch ($format) {
             $row .= '  [' . $inTime . ($outTime !== '' ? ' - ' . $outTime : '') . ']';
             $lines[] = $row;
 
-            if (trim($c['notes'] ?? '') !== '') {
+            if ($includeNotes && trim($c['notes'] ?? '') !== '') {
                 $lines[] = '      Notes: ' . $c['notes'];
             }
         }

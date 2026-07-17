@@ -182,12 +182,19 @@ Per-row actions:
 - **Download CSV** — check-in table only, one row per check-in. Name column uses the composed
   `preferred_name (name)` form (or just `name` if no preferred name is set), matching the on-screen
   table.
-- **Download Report** — clean plain-text summary, decided v1 format (an HTML option may follow
-  later, not v1). Intended to be pasted directly into a follow-up email, so it favors readability
-  over structure: net header (name, date, net control, frequency, status), the `script_notes`
-  content, then the check-in list (composed name form, city/state, check-in/out times, per-check-in
-  notes).
+- **Download Report** / **Download Report w/ Notes** — clean plain-text summary, decided v1 format
+  (an HTML option may follow later, not v1). Intended to be pasted directly into a follow-up
+  email, so it favors readability over structure: net header (name, date, net control, frequency,
+  status), the `script_notes` content, then the check-in list (composed name form, city/state,
+  check-in/out times). The plain **Report** omits each check-in's per-row `notes` — those are
+  often just internal shorthand for the net controller, not meant for an outward-facing follow-up
+  — while **Report w/ Notes** includes them. Two separate downloads/links rather than a checkbox,
+  since it's a one-off choice made at download time, not a net setting.
 - **Download JSON backup** — the raw net file, as-is
+
+Every download filename includes the net's creation date (`<slug>-<YYYY-MM-DD>...`), since nets
+that share a name (a weekly net run under the same title every week) would otherwise all download
+to indistinguishable filenames.
 - **Start new net like this one** — opens the same creation form used by **Begin New Net** (below),
   pre-filled with: name, net_type, frequency, description, net_control, hamdat zip/radius, roster,
   and `script_notes`. The operator can edit any field before submitting — nothing is created until

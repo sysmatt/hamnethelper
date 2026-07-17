@@ -141,10 +141,16 @@ document.addEventListener('DOMContentLoaded', async function () {
       openLink.textContent = net.status === 'closed' ? 'Resume' : 'Open';
       actions.appendChild(openLink);
 
-      ['csv', 'report', 'json'].forEach(function (format) {
+      [
+        { format: 'csv', label: 'CSV' },
+        { format: 'report', label: 'Report' },
+        { format: 'report', label: 'Report w/ Notes', notes: true },
+        { format: 'json', label: 'JSON' },
+      ].forEach(function (dl) {
         var link = document.createElement('a');
-        link.href = 'api/net_download.php?id=' + encodeURIComponent(net.id) + '&format=' + format;
-        link.textContent = format.toUpperCase();
+        link.href = 'api/net_download.php?id=' + encodeURIComponent(net.id) + '&format=' + dl.format +
+          (dl.notes ? '&notes=1' : '');
+        link.textContent = dl.label;
         actions.appendChild(link);
       });
 
