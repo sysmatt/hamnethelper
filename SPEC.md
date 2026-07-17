@@ -378,6 +378,11 @@ Falls back to a plain `<textarea>` if the vendor asset is missing (same as the E
 fallback behavior) — low-risk either way, since the storage format never depended on which editor
 was in front of it.
 
+Height is left at Vditor's default (`'auto'`, only `minHeight: 150` set) rather than a fixed
+value, so the editor grows to fit its content — same behavior as the old EasyMDE integration.
+Fixing a height produces an internal scrollbar for longer scripts, which reads as cramped for what
+is otherwise the primary place a net controller writes running notes through a whole net.
+
 ### 5.4 Other interaction notes
 
 - Check-in time is set automatically when a row is created; check-out time only ever moves via the

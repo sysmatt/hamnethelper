@@ -327,7 +327,8 @@ document.addEventListener('DOMContentLoaded', async function () {
       mode: 'ir', // instant-render, Typora-style -- type markdown, see it formatted in place,
       // no separate edit/preview mode to flip between (SPEC.md §5.3).
       value: net.script_notes || '',
-      height: 260,
+      // No fixed `height` -- Vditor's default is 'auto', which grows the editor to fit its
+      // content (matching EasyMDE's behavior) instead of a fixed box with an internal scrollbar.
       minHeight: 150,
       placeholder: 'Welcome script, announcements, running notes…',
       cdn: 'assets/vendor/vditor', // local vendored copy -- see assets/vendor/vditor/VERSIONS.md
