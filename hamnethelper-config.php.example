@@ -16,10 +16,13 @@ return [
     // meaningless to a human reader without converting to a real timezone first. The browser
     // handles that automatically for on-screen display; downloaded reports (api/net_download.php)
     // run server-side with no browser to ask, so they need to be told what timezone to render
-    // times in. Set this to wherever net control actually operates from. Any valid PHP timezone
-    // identifier (see https://www.php.net/manual/en/timezones.php), e.g. 'America/New_York',
+    // times in. Defaults to the host's own system timezone (read from /etc/timezone or
+    // /etc/localtime, see lib/config.php's hnh_detect_system_timezone()) -- usually already
+    // correct without setting anything here. Uncomment only if net control operates somewhere
+    // other than wherever this server's own clock is set for. Any valid PHP timezone identifier
+    // (see https://www.php.net/manual/en/timezones.php), e.g. 'America/New_York',
     // 'America/Chicago', 'Europe/London'.
-    'timezone' => 'America/New_York',
+    // 'timezone' => 'America/New_York',
 
     // --- Paths & hamdat integration -----------------------------------------------------------
 

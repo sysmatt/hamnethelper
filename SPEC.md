@@ -564,6 +564,16 @@ line rather than cramming or scrolling.
   timezone-aware `DateTime` object's `format()` output, since `format()` always renders using the
   object's *own* timezone (inferred from the offset embedded in the source string), not whatever
   the process-wide default happens to be.
+
+  Also confirmed live: forgetting to set `timezone` at all (an easy mistake — it's a new key an
+  existing deployment's config file won't have until someone remembers to add it) silently fell
+  back to `UTC`, reproducing the exact same wrong-report-times symptom on a real deployment before
+  its config was updated. Rather than leave that as a footgun, `timezone` now **defaults to the
+  host's own system timezone** (`hnh_detect_system_timezone()` in `lib/config.php`, reading
+  `/etc/timezone` or `/etc/localtime`'s symlink target, falling back to `UTC` only if neither is
+  readable/recognized) — most deployments already have their system clock set correctly for
+  wherever net control operates, so this is usually right with nothing to configure at all. An
+  explicit `timezone` in `hamnethelper-config.php` still always overrides the detected value.
 - **Closed** only appears once the net is closed, showing `ended_at`.
 
 `official_start` and the computed `Duration` (same formula, frozen/live the same way, generated at

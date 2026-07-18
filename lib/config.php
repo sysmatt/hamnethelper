@@ -9,6 +9,42 @@
  * scripts and API endpoints can each format the error their own way.
  */
 
+/**
+ * Best-effort read of the *host's* configured timezone, as a sensible default for `timezone`
+ * below -- most deployments already have their system clock set correctly for wherever net
+ * control operates from, so this saves that being a second, easy-to-forget place to configure it
+ * (see SPEC.md §5.6's history: forgetting to set it once already produced a wrong report). Only
+ * ever used as a fallback -- an explicit `timezone` in hamnethelper-config.php always wins.
+ * Falls back to 'UTC' if detection fails for any reason (non-Linux host, unreadable files,
+ * unrecognized value) rather than risking an invalid DateTimeZone identifier downstream.
+ */
+function hnh_detect_system_timezone(): string
+{
+    $identifiers = DateTimeZone::listIdentifiers();
+
+    // /etc/timezone: a plain-text identifier, the simplest source (Debian/Ubuntu and derivatives).
+    if (is_readable('/etc/timezone')) {
+        $tz = trim((string) file_get_contents('/etc/timezone'));
+        if (in_array($tz, $identifiers, true)) {
+            return $tz;
+        }
+    }
+
+    // /etc/localtime: most other distros symlink this to .../zoneinfo/<Region>/<City> instead.
+    if (is_link('/etc/localtime')) {
+        $target = readlink('/etc/localtime');
+        $pos = $target !== false ? strpos($target, 'zoneinfo/') : false;
+        if ($pos !== false) {
+            $tz = substr($target, $pos + strlen('zoneinfo/'));
+            if (in_array($tz, $identifiers, true)) {
+                return $tz;
+            }
+        }
+    }
+
+    return 'UTC';
+}
+
 function hnh_config(): array
 {
     static $config = null;
@@ -22,9 +58,10 @@ function hnh_config(): array
         // math, but meaningless to a human reader without converting to a real timezone first.
         // The browser handles that automatically for on-screen display (HNH.formatTime(), §5.1),
         // but report generation (api/net_download.php) runs server-side with no browser to ask,
-        // so it needs to be told what timezone to render times in. Set this to wherever net
-        // control actually operates from.
-        'timezone' => 'UTC',
+        // so it needs to be told what timezone to render times in. Defaults to the host's own
+        // system timezone (hnh_detect_system_timezone()) -- override here only if net control
+        // operates somewhere other than wherever this server's clock is set for.
+        'timezone' => hnh_detect_system_timezone(),
         'hamdat_bin' => '/usr/local/bin/hamdat',
         'hamdat_db' => null,
         'hamdat_temp_dir' => sys_get_temp_dir(),
