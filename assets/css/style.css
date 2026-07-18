@@ -67,38 +67,57 @@ body {
   white-space: nowrap;
 }
 
+/* A grid, not flex: each clock contributes exactly 3 children (label row, value row, date row --
+   `.clock` itself is `display: contents`, so those children flatten directly into this grid
+   rather than being laid out inside their own box). With `grid-auto-flow: column` and 3 explicit
+   rows, every clock's label lands in row 1, value in row 2, date in row 3 -- so labels/icons,
+   big time values, and small dates each form one clean aligned row across all four clocks,
+   instead of each clock centering its own content independently (which let clocks with a date
+   line and clocks without one drift out of alignment with each other, and made the absolutely-
+   positioned edit/reset icons land at different heights depending on that). */
 .net-clocks {
-  display: flex;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  grid-auto-flow: column;
+  column-gap: 1.75rem;
+  row-gap: 0.2rem;
   align-items: center;
-  gap: 1.75rem;
+  justify-items: center;
 }
 
 .clock {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  line-height: 1.25;
-  min-width: 4.5rem;
+  display: contents;
 }
 
-/* `.clock` sets `display: flex`, which ties with the browser's own `[hidden] { display: none }`
-   rule on specificity -- author CSS wins that tie, so `hidden` would otherwise be silently
-   ignored on a clock div (e.g. #clock-closed on an open net). This rule outranks it. */
+/* `.clock` used to set `display: flex`, which tied with the browser's own `[hidden] { display:
+   none }` rule on specificity, and author CSS wins ties -- so `hidden` was silently ignored on a
+   clock div (e.g. #clock-closed on an open net) without this override. `display: contents` no
+   longer competes the same way, but keep the override; it's harmless and still correct. */
 .clock[hidden] {
   display: none;
 }
 
+.clock-label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .clock-label {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-muted);
 }
 
+.clock-value-row {
+  display: flex;
+  align-items: center;
+}
+
 .clock-value {
-  font-size: 1.6rem;
+  font-size: 2.4rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -108,15 +127,16 @@ body {
 }
 
 .clock-date {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 
+/* No longer absolutely positioned -- it sits inline in .clock-label-row now, so it naturally
+   aligns with every other clock's label row instead of floating at a fixed offset that landed at
+   a different height depending on whether that particular clock also had a date line below it. */
 .clock-edit-btn {
-  position: absolute;
-  top: -0.3rem;
-  right: -1rem;
-  font-size: 0.75rem;
+  font-size: 0.85rem;
+  line-height: 1;
   opacity: 0.7;
 }
 
@@ -130,13 +150,13 @@ body {
 }
 
 .clock-edit-input {
-  width: 5rem;
-  padding: 0.1rem 0.3rem;
+  width: 6.5rem;
+  padding: 0.15rem 0.4rem;
   background: var(--bg);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 4px;
-  font-size: 0.9rem;
+  font-size: 1.2rem;
 }
 
 .back-link {
@@ -160,7 +180,10 @@ body {
 }
 
 /* Below this width, the 3-column grid can't fit back-link+name, all four clocks, and the
-   save-indicator/buttons on one line without cramping -- stack them as full-width rows instead. */
+   save-indicator/buttons on one line without cramping -- stack them as full-width rows instead.
+   The row-aligned label/value/date grid (above) also gives way to each clock wrapping as its own
+   independent column, since there's no longer one wide row to keep 4 clocks' worth of columns
+   aligned across. */
 @media (max-width: 900px) {
   .app-header {
     display: flex;
@@ -172,8 +195,14 @@ body {
     justify-content: center;
   }
   .net-clocks {
+    display: flex;
     justify-content: center;
     flex-wrap: wrap;
+  }
+  .clock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 }
 

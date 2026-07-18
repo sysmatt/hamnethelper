@@ -462,11 +462,13 @@ away.
 ### 5.6 Net-clocks ribbon
 
 Four small clocks live in the header, between the net name and the Saved indicator/Close-Net/
-Theme buttons — abbreviated labels (**Start · Open · Dur · Closed**) to keep the ribbon compact,
-each showing a big `HH:MM` (24h) value with a small date underneath, except **Start** (no date —
-it's a dateless field, showing a date under it would misleadingly imply otherwise) and **Duration**
-(an offset, not a point in time). On a window too narrow to fit the whole header on one line, it
-wraps to a second line rather than cramming or scrolling.
+Theme buttons — **Start · Open · Duration · Closed**, each showing a big `HH:MM` (24h) value with
+a small date underneath, except **Start** (no date — it's a dateless field, showing a date under
+it would misleadingly imply otherwise) and **Duration** (an offset, not a point in time). Laid out
+as a grid so labels/edit-icons, values, and dates each form one aligned row across all four clocks
+(`.net-clocks` in `assets/css/style.css`), rather than each clock centering its own content
+independently. On a window too narrow to fit the whole header on one line, it wraps to a second
+line rather than cramming or scrolling.
 
 - **Start** shows `official_start` if set, static, with a small pencil-edit affordance (same
   interaction as the preferred-name edit, §5.2) that turns it into an inline `HH:MM` text field

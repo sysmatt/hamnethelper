@@ -36,27 +36,45 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $netId)) {
 
   <div id="net-clocks" class="net-clocks">
     <div id="clock-start" class="clock">
-      <span class="clock-label">Start</span>
-      <span id="clock-start-value" class="clock-value"></span>
-      <input type="text" id="clock-start-input" class="clock-edit-input" inputmode="numeric" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" placeholder="HH:MM" maxlength="5" hidden>
-      <button type="button" id="edit-official-start-btn" class="clock-edit-btn icon-btn"></button>
+      <span class="clock-label-row">
+        <span class="clock-label">Start</span>
+        <button type="button" id="edit-official-start-btn" class="clock-edit-btn icon-btn"></button>
+      </span>
+      <span class="clock-value-row">
+        <span id="clock-start-value" class="clock-value"></span>
+        <input type="text" id="clock-start-input" class="clock-edit-input" inputmode="numeric" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" placeholder="HH:MM" maxlength="5" hidden>
+      </span>
+      <span class="clock-date"></span>
     </div>
 
     <div class="clock">
-      <span class="clock-label">Open</span>
-      <span id="clock-open-value" class="clock-value"></span>
+      <span class="clock-label-row">
+        <span class="clock-label">Open</span>
+        <button type="button" id="reset-opened-btn" class="clock-edit-btn icon-btn" title="Reset Opened time to now" aria-label="Reset Opened time to now">&#8635;</button>
+      </span>
+      <span class="clock-value-row">
+        <span id="clock-open-value" class="clock-value"></span>
+      </span>
       <span id="clock-open-date" class="clock-date"></span>
-      <button type="button" id="reset-opened-btn" class="clock-edit-btn icon-btn" title="Reset Opened time to now" aria-label="Reset Opened time to now">&#8635;</button>
     </div>
 
     <div class="clock">
-      <span class="clock-label">Dur</span>
-      <span id="clock-duration-value" class="clock-value clock-mono"></span>
+      <span class="clock-label-row">
+        <span class="clock-label">Duration</span>
+      </span>
+      <span class="clock-value-row">
+        <span id="clock-duration-value" class="clock-value clock-mono"></span>
+      </span>
+      <span class="clock-date"></span>
     </div>
 
     <div id="clock-closed" class="clock" hidden>
-      <span class="clock-label">Closed</span>
-      <span id="clock-closed-value" class="clock-value"></span>
+      <span class="clock-label-row">
+        <span class="clock-label">Closed</span>
+      </span>
+      <span class="clock-value-row">
+        <span id="clock-closed-value" class="clock-value"></span>
+      </span>
       <span id="clock-closed-date" class="clock-date"></span>
     </div>
   </div>
