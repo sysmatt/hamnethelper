@@ -106,7 +106,7 @@ save wins — acceptable for this workflow.
   "created_at": "2026-07-16T18:30:00-05:00",
   "updated_at": "2026-07-16T20:05:12-05:00",
   "opened_at": "2026-07-16T18:28:40-05:00",
-  "official_start": "19:00",
+  "official_start": "2026-07-16T19:00:00-05:00",
   "ended_at": null,
   "net_control": "K1ABC",
   "frequency": "146.940 MHz -0.6 PL 100.0",
@@ -170,11 +170,15 @@ Field notes:
   check-ins didn't actually start until later). Defaults to `created_at` at creation time; nets
   written before this field existed fall back to `created_at` on read (`hnh_read_net()`) rather
   than requiring an on-disk migration. See §5.6.
-- `official_start` is `"HH:MM"` (24h), no date component — some nets run for a fixed weekly
-  time-slot regardless of what date they land on, others run long enough or start early enough
-  that a bound date wouldn't mean anything useful. `null` if not set. See §5.6 for how it's
-  resolved to an actual moment in time (it needs a calendar date from somewhere to be compared
-  against "now").
+- `official_start` is a full ISO 8601 datetime, `null` if not set. An earlier design stored just
+  `"HH:MM"` with no date, reasoning that a fixed weekly time-slot doesn't need one — but that
+  meant Duration math had to *infer* which calendar day "HH:MM" referred to (anchored to
+  `opened_at`'s day), which was a real, repeated source of bugs (see §5.6's history). A full
+  datetime needs no inference: Duration is just a subtraction between two absolute instants. The
+  UI still makes "today" the effortless default (a date picker pre-filled with today, next to the
+  same plain-text `HH:MM` time field, §4/§5.6) — the extra precision doesn't cost the operator
+  anything in the common case, and correctly handles a net prepped days ahead of its real date,
+  which the date-less design could never get right regardless of any anchoring heuristic.
 
 ### 3.2 Level-1 cache (browser)
 
@@ -247,21 +251,34 @@ Per-row actions:
   name (a weekly net run under the same title every week) would otherwise all download to
   indistinguishable filenames.
 - **Start new net like this one** (🔁 icon) — opens the same creation form used by **Begin New Net** (below),
-  pre-filled with: name, net_type, frequency, description, net_control, official start time, hamdat
-  zip/radius, roster, and `script_notes`. The operator can edit any field before submitting — nothing is created until
+  pre-filled with: name, net_type, frequency, description, net_control, official start *time*
+  (carried over — a recurring weekly net keeps its time-slot), hamdat zip/radius, roster, and
+  `script_notes`. Official start *date* defaults to today regardless, not the source net's
+  original date — this is a new occurrence, not the same one restored (that's `api/net_import.php`,
+  below). The operator can edit any field before submitting — nothing is created until
   they confirm. On submit: fresh `checkins: []`, new `id`, new `created_at`, `status: "open"`,
   `ended_at: null`, and a fresh (empty) `hamdat_lookup.cached_results` — the zip/radius carries over
   but the cache itself is not copied; if the zip is still filled in, submitting re-runs the lookup
   immediately (see below) rather than requiring a separate trip into Lookup Settings.
 
 Page-level action: **Begin New Net** — opens a blank version of the same creation form (name,
-net_type, net control, official start time, frequency, description, hamdat zip/radius) and creates
-the file on submit. Official start time is optional (a plain `HH:MM` text field, 24h, no date —
-see §5.6) — a net with a fixed weekly time-slot fills it in, a purely ad-hoc net leaves it blank.
-Deliberately not a native `<input type="time">`: that control's displayed format (12h with AM/PM,
-or 24h) follows the browser/OS locale, not anything the page can control, so it can't guarantee
-consistent 24h display the way the rest of the app does (`HNH.formatTime()`, §5.1) — a plain text
-field with a validated `HH:MM` pattern always shows exactly what's typed, no locale involved.
+net_type, net control, official start date/time, frequency, description, hamdat zip/radius) and
+creates the file on submit. Official start is optional and split across two fields, combined
+client-side into one ISO datetime (`HNH.combineDateAndTime()` in `assets/js/api.js`) before
+submitting:
+- **Date** — a native `<input type="date">`, pre-filled with today (the overwhelmingly common
+  case — "starts later today"). A native date picker is safe here in a way a native *time* picker
+  isn't (see below): its displayed format may vary by locale, but the stored value is always
+  unambiguous `YYYY-MM-DD`, nothing like the AM/PM risk a time control carries.
+- **Time** — the same plain `HH:MM` text field used throughout this app, 24h, empty by default.
+  Deliberately not a native `<input type="time">`: that control's displayed format (12h with
+  AM/PM, or 24h) follows the browser/OS locale, not anything the page can control, so it can't
+  guarantee consistent 24h display the way the rest of the app does (`HNH.formatTime()`, §5.1) —
+  a plain text field with a validated `HH:MM` pattern always shows exactly what's typed, no locale
+  involved.
+
+Both must be filled in for `official_start` to be set at all — either one missing/invalid and it's
+simply left unset, same as leaving the whole thing blank.
 
 Page-level action: **Import Net** — restores a previously-downloaded JSON backup (the "Download
 JSON backup" link above) as a new net. File picker → read client-side → `POST api/net_import.php`
@@ -463,20 +480,20 @@ away.
 
 Four small clocks live in the header, between the net name and the Saved indicator/Close-Net/
 Theme buttons — **Start · Open · Duration · Closed**, each showing a big `HH:MM` (24h) value with
-a small date underneath, except **Start** (no date — it's a dateless field, showing a date under
-it would misleadingly imply otherwise) and **Duration** (an offset, not a point in time). Laid out
-as a grid so labels/edit-icons, values, and dates each form one aligned row across all four clocks
-(`.net-clocks` in `assets/css/style.css`), rather than each clock centering its own content
+a small date underneath, except **Duration** (an offset, not a point in time — see below). Laid
+out as a grid so labels/edit-icons, values, and dates each form one aligned row across all four
+clocks (`.net-clocks` in `assets/css/style.css`), rather than each clock centering its own content
 independently. On a window too narrow to fit the whole header on one line, it wraps to a second
 line rather than cramming or scrolling.
 
 - **Start** shows `official_start` if set, static, with a small pencil-edit affordance (same
-  interaction as the preferred-name edit, §5.2) that turns it into an inline `HH:MM` text field
-  (not a native `<input type="time">` — see §4 for why) — Enter or blur commits, Escape cancels
-  without saving. If no `official_start` is set yet, the
-  edit affordance shows as "+" instead of a pencil, so one can be added at any time, not just at
-  net creation. Editing is disabled while the net is closed, consistent with the rest of the
-  workspace lockout (§5.5).
+  interaction as the preferred-name edit, §5.2) that turns it into an inline date picker + `HH:MM`
+  text field pair (§4) — Enter or blur (leaving *both* fields) commits, Escape cancels without
+  saving. The date field pre-fills with today when opening the edit with no `official_start` set
+  yet, so the common case ("starts later today") needs only the time typed in. If no
+  `official_start` is set yet, the edit affordance shows as "+" instead of a pencil, so one can be
+  added at any time, not just at net creation. Editing is disabled while the net is closed,
+  consistent with the rest of the workspace lockout (§5.5).
 - **Open** shows `opened_at`, with a small "reset" button (↺, `title="Reset Opened time to now"`)
   that sets `opened_at` to the current moment — for a net pre-created ahead of time where check-ins
   didn't actually start until later. Also disabled while closed.
@@ -485,7 +502,7 @@ line rather than cramming or scrolling.
   count-up — there's a single formula, not two separate code paths:
 
   ```
-  anchor = official_start resolved to a real datetime (see below), or opened_at if unset
+  anchor = official_start (a full instant, see below), or opened_at if unset
   duration = (ended_at if closed, else now) − anchor
   ```
 
@@ -497,34 +514,56 @@ line rather than cramming or scrolling.
   `ended_at` rather than live wall-clock time, so it doesn't keep counting up after the net (and the
   static Closed clock next to it) says otherwise. Resumes live ticking immediately on Re-open.
 
-  Resolving `official_start` (`"HH:MM"`, no date) to a comparable datetime requires anchoring it to
-  some calendar day — the chosen day is `opened_at`'s. This is naturally correct for the common
-  case (net opened a bit before its same-day official start), but has one edge case worth spelling
-  out: a net opened just before midnight for an official start just after midnight (e.g. opened
-  23:50, `official_start` "00:15") would, anchored naively to the *same* calendar day, put the
-  anchor *before* `opened_at` — Duration would immediately read as "~24h already elapsed," which is
-  backwards (the real start is 25 minutes away, not a day in the past). Fixed by rolling the anchor
-  forward one calendar day whenever the same-day anchor would fall before `opened_at` — implemented
-  identically in both `assets/js/net.js` (`computeAnchorMs()`, for the live ribbon) and
-  `api/net_download.php` (`hnh_official_start_anchor()`, for the report, §6) so the two can never
-  disagree with each other.
+  Because `official_start` is a full ISO datetime rather than a bare `"HH:MM"`, the anchor is just
+  that instant, directly — no calendar-day inference needed, implemented identically (and now
+  trivially) in `assets/js/net.js` (`computeAnchorMs()`) and `api/net_download.php`
+  (`hnh_official_start_anchor()`) so the live ribbon and the report can never disagree.
 
-  **Timezone matters here.** `official_start`'s "HH:MM" means wall-clock time in the operator's
-  own local sense — the live ribbon (`computeAnchorMs()`) reads it against the *browser's* local
-  timezone, which is correct for whoever's actually looking at the screen. The report is generated
-  server-side, though, where there's no browser to ask — `hnh_official_start_anchor()` instead
-  normalizes `opened_at` to the app's configured `timezone` (`hamnethelper-config.php`, README's
-  config reference) before doing the same wall-clock math, rather than whatever offset happened to
-  be baked into the stored `opened_at` string (which just reflects the server's timezone *at
-  write time*, and could be UTC, could be anything). Set `timezone` to match wherever net control
-  actually operates from — a mismatch between that config and the operators' real timezone throws
-  the report's Duration off by however many hours (or, if the resulting anchor lands on the wrong
-  side of `opened_at`, triggers the midnight-rollover above unnecessarily, throwing it off by
-  closer to a full day). Confirmed as a real bug, not theoretical: reproduced a ~19-hour-wrong
-  report Duration on a test net that had only been open one minute, root-caused to exactly this —
-  server's PHP default timezone was UTC while the browser/OS were America/New_York, so "14:35" got
-  read as 14:35 UTC instead of 14:35 local, and the resulting (wrong) anchor ended up before
-  `opened_at`, triggering an unwanted day-rollover on top of the base offset.
+  **This wasn't always the design, and the history is worth keeping.** `official_start` was
+  originally date-less (just `"HH:MM"`), reasoning that a fixed weekly time-slot doesn't need a
+  date. That meant every Duration computation had to *guess* which calendar day "HH:MM" meant,
+  anchored to `opened_at`'s day — and every version of that guess broke a real scenario:
+  - Anchoring to the same day as `opened_at` breaks when a net opens just before midnight for a
+    start just after midnight (opened 23:50, start "00:15") — the naive same-day anchor lands
+    *before* `opened_at`, reading as "~24h already elapsed" instead of "~25 minutes away."
+  - Attempting to fix that with an unconditional "roll the anchor forward a day whenever it's
+    before `opened_at`" rule breaks the much more common case of a net simply opened *after* its
+    own scheduled start already passed (official start 15:07, net not opened until 18:57) — that
+    rule can't distinguish "opened just before midnight" from "opened a few hours late," so it
+    rolled forward regardless, producing a bogus ~20-hour-negative Duration. Confirmed via an
+    actual downloaded report reading `Duration: -19:56:49` for a net that had only been open a few
+    hours.
+  - A refined 12-hour-behind threshold fixed *that* specific pair of cases, but the underlying
+    issue — a date-less field can't distinguish "same day, already passed" from "day boundary
+    just crossed" from "prepped days in advance" without some heuristic that's wrong for one of
+    them — never fully went away, and a separate bug (interpreting `official_start`'s implied day
+    against the wrong timezone entirely) surfaced in the same area shortly after.
+
+  Storing a full instant instead removes the guessing entirely: there's nothing left to infer.
+  The UI cost is one extra field (a date), defaulted to today so the common case is unaffected —
+  see §4.
+
+  **A related but genuinely separate timezone issue turned up while testing this change**, worth
+  distinguishing from the history above: every timestamp this app stores (`created_at`,
+  `opened_at`, `checked_in_at`, `official_start`, ...) is a UTC instant — correct and unambiguous
+  for storage and for the Duration math above (a plain subtraction between two instants needs no
+  timezone at all), but meaningless to a *human reader* without converting to a real timezone
+  first. On-screen, the browser does that conversion for free (`HNH.formatTime()`, §5.1) — but the
+  downloaded **Report** is generated server-side, with no browser to ask, and its date/time
+  formatting functions (`hnh_report_date()`/`hnh_report_time()` in `api/net_download.php`) were
+  never converting at all, silently displaying raw UTC wall-clock labeled as if it were local.
+  Confirmed as real, not just theoretical, directly while verifying the `official_start` change
+  above: a report line read "7:00 PM" for an instant the live ribbon (correctly, browser-side)
+  showed as "15:00" local, and a check-in's `checked_in_at` showed "7:39 PM" against a real local
+  time of "3:39 PM" — a bug that predates this session's changes and affects every timestamp the
+  report has ever shown, not just `official_start`. Fixed by adding back a `timezone` config key
+  (`hamnethelper-config.php`, README's config reference) and converting explicitly
+  (`DateTime::setTimezone()`) inside every report date/time formatter, rather than the discarded
+  approach from this session's earlier (and, it turned out, ineffective) attempt at a similar fix,
+  which called `date_default_timezone_set()` globally — that call has no effect on an already-
+  timezone-aware `DateTime` object's `format()` output, since `format()` always renders using the
+  object's *own* timezone (inferred from the offset embedded in the source string), not whatever
+  the process-wide default happens to be.
 - **Closed** only appears once the net is closed, showing `ended_at`.
 
 `official_start` and the computed `Duration` (same formula, frozen/live the same way, generated at
@@ -577,10 +616,10 @@ logic exists in exactly one place.
 - Uploaded roster files: size-limited, parsed as plain text, one token per line, loosely validated
   as callsign-shaped (not strictly enforced — partial/garbage entries just won't match anything
   useful).
-- `official_start` is validated against a strict `HH:MM` (24h) pattern server-side
+- `official_start` is validated as a parseable ISO 8601 datetime server-side
   (`hnh_valid_official_start()` in `lib/net_store.php`) on every write path (create, autosave,
-  import) — anything else, including empty string, normalizes to "not set" rather than being
-  rejected outright.
+  import) — anything unparseable, including empty string, normalizes to "not set" rather than
+  being rejected outright.
 - Imported net JSON backups (`api/net_import.php`) are merged over a full-shape skeleton rather
   than trusted wholesale, so a hand-edited or partially-missing backup can't produce a
   structurally invalid net file — and identity fields (`id`/`created_at`/`updated_at`) are always

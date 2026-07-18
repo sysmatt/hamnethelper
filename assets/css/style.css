@@ -150,13 +150,20 @@ body {
 }
 
 .clock-edit-input {
-  width: 6.5rem;
   padding: 0.15rem 0.4rem;
   background: var(--bg);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 1.2rem;
+}
+
+.clock-edit-date-input {
+  width: 9.5rem;
+}
+
+.clock-edit-time-input {
+  width: 4.5rem;
 }
 
 .back-link {

@@ -13,7 +13,10 @@ document.addEventListener('DOMContentLoaded', async function () {
   var uploadInput = document.getElementById('roster-file-input');
 
   var clockStartValue = document.getElementById('clock-start-value');
+  var clockStartValueRow = document.getElementById('clock-start-value-row');
+  var clockStartDateInput = document.getElementById('clock-start-date-input');
   var clockStartInput = document.getElementById('clock-start-input');
+  var clockStartDate = document.getElementById('clock-start-date');
   var editStartBtn = document.getElementById('edit-official-start-btn');
   var clockOpenValue = document.getElementById('clock-open-value');
   var clockOpenDate = document.getElementById('clock-open-date');
@@ -140,32 +143,26 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   // --- Net-clocks ribbon: Official Start / Opened / Duration / Closed (SPEC.md §5.6) --------
   //
-  // Official Start (net.official_start, "HH:MM", no date) and Opened (net.opened_at, a full
+  // Official Start (net.official_start, a full ISO datetime) and Opened (net.opened_at, a full
   // timestamp distinct from created_at -- created_at is used elsewhere for identity/filenames
   // and must stay immutable, whereas opened_at is meant to be operator-resettable) only change
   // via explicit edit/reset actions, so renderClocks() is called from render() (on load and
   // whenever net data changes) -- never on the once-a-second Duration tick, so an in-progress
   // Official Start edit is never clobbered mid-keystroke.
 
+  // official_start is a full ISO datetime (SPEC.md §5.6, not just a bare "HH:MM") -- a
+  // self-contained absolute instant, so the anchor is just that instant directly. No inference
+  // about which calendar day it refers to is needed (an earlier date-less design needed to guess
+  // that from opened_at, which was a real source of Duration bugs -- see SPEC.md §5.6's history).
   function computeAnchorMs() {
+    if (net.official_start) {
+      var t = new Date(net.official_start).getTime();
+      if (!isNaN(t)) {
+        return t;
+      }
+    }
     var openedMs = net.opened_at ? new Date(net.opened_at).getTime() : null;
-    if (openedMs === null || isNaN(openedMs) || !net.official_start) {
-      return openedMs; // no official start set -> Duration is always elapsed-since-opened
-    }
-    var parts = net.official_start.split(':');
-    var opened = new Date(openedMs);
-    var anchor = new Date(
-      opened.getFullYear(), opened.getMonth(), opened.getDate(),
-      Number(parts[0]), Number(parts[1]), 0, 0
-    ).getTime();
-    // If the same-day anchor falls before opened_at (e.g. opened 23:50, official start "00:15"),
-    // treat it as the next calendar day's occurrence instead -- otherwise Duration would read as
-    // already ~24h elapsed the instant the net opens, instead of counting down the ~25 minutes
-    // actually remaining.
-    if (anchor < openedMs) {
-      anchor += 24 * 60 * 60 * 1000;
-    }
-    return anchor;
+    return (openedMs !== null && !isNaN(openedMs)) ? openedMs : null;
   }
 
   function formatDurationMs(ms) {
@@ -205,17 +202,20 @@ document.addEventListener('DOMContentLoaded', async function () {
     var closed = net.status === 'closed';
 
     if (net.official_start) {
-      clockStartValue.textContent = net.official_start;
+      clockStartValue.textContent = HNH.formatTime(net.official_start);
+      clockStartDate.textContent = HNH.formatDateOnly(net.official_start);
       editStartBtn.textContent = '✏️';
       editStartBtn.title = 'Edit official start time';
     } else {
       clockStartValue.textContent = '—';
+      clockStartDate.textContent = '';
       editStartBtn.textContent = '+';
       editStartBtn.title = 'Set official start time';
     }
     editStartBtn.setAttribute('aria-label', editStartBtn.title);
     editStartBtn.disabled = closed;
     clockStartValue.hidden = false;
+    clockStartDateInput.hidden = true;
     clockStartInput.hidden = true;
 
     clockOpenValue.textContent = HNH.formatTime(net.opened_at);
@@ -239,15 +239,24 @@ document.addEventListener('DOMContentLoaded', async function () {
     scheduleSave();
   });
 
+  // Official Start is now a full ISO datetime (SPEC.md §5.6, not a bare "HH:MM") -- edited via a
+  // native date picker (defaults to today, the common case per user feedback) alongside the same
+  // plain-text HH:MM time field used elsewhere in this app (not a native <input type="time">,
+  // which follows the browser/OS locale for 12h-vs-24h display rather than anything the page
+  // controls -- see SPEC.md §4).
   editStartBtn.addEventListener('click', function () {
     if (editStartBtn.disabled) {
       return;
     }
     clockStartValue.hidden = true;
     editStartBtn.hidden = true;
-    clockStartInput.value = net.official_start || '';
+    clockStartDateInput.value = net.official_start
+      ? HNH.formatDateForInput(net.official_start)
+      : HNH.todayDateInputValue();
+    clockStartInput.value = net.official_start ? HNH.formatTime(net.official_start) : '';
+    clockStartDateInput.hidden = false;
     clockStartInput.hidden = false;
-    clockStartInput.focus();
+    clockStartDateInput.focus();
   });
 
   var cancelingStartEdit = false;
@@ -258,24 +267,37 @@ document.addEventListener('DOMContentLoaded', async function () {
       return;
     }
     editStartBtn.hidden = false;
-    net.official_start = clockStartInput.value || null;
+    net.official_start = HNH.combineDateAndTime(clockStartDateInput.value, clockStartInput.value);
     renderClocks();
     scheduleSave();
   }
 
-  clockStartInput.addEventListener('blur', commitOfficialStart);
-  clockStartInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      clockStartInput.blur();
-    } else if (e.key === 'Escape') {
-      // Hiding the input triggers its own `blur` (a hidden/display:none element can't hold
-      // focus) -- this flag stops that blur from committing the in-progress (unwanted) edit.
-      cancelingStartEdit = true;
-      clockStartInput.hidden = true;
-      editStartBtn.hidden = false;
-      clockStartValue.hidden = false;
+  // Delegated on the shared wrapper (not a plain `blur` on either individual input) -- tabbing
+  // from the date field to the time field is still "still editing," not "done." `focusout`
+  // bubbles (unlike `blur`), and `relatedTarget` says exactly where focus is headed next, so this
+  // only commits once focus actually leaves *both* fields.
+  clockStartValueRow.addEventListener('focusout', function (e) {
+    if (e.relatedTarget && clockStartValueRow.contains(e.relatedTarget)) {
+      return;
     }
+    commitOfficialStart();
+  });
+
+  [clockStartDateInput, clockStartInput].forEach(function (input) {
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        input.blur();
+      } else if (e.key === 'Escape') {
+        // Hiding the inputs triggers a `focusout` (a hidden/display:none element can't hold
+        // focus) -- this flag stops that from committing the in-progress (unwanted) edit.
+        cancelingStartEdit = true;
+        clockStartDateInput.hidden = true;
+        clockStartInput.hidden = true;
+        editStartBtn.hidden = false;
+        clockStartValue.hidden = false;
+      }
+    });
   });
 
   function renderCheckins() {

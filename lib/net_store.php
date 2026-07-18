@@ -52,13 +52,23 @@ function hnh_read_net(string $id): ?array
     return $data;
 }
 
-/** Validates "HH:MM" (24h). Anything else -- including null/empty -- normalizes to null (no official start set). */
+/**
+ * Validates official_start as a parseable ISO 8601 datetime (a full instant, not just "HH:MM" --
+ * see SPEC.md §5.6 for why: a bare wall-clock time with no date requires guessing which calendar
+ * day it refers to, which was a real source of Duration bugs). Anything unparseable -- including
+ * null/empty -- normalizes to null (no official start set).
+ */
 function hnh_valid_official_start(?string $value): ?string
 {
     if ($value === null || $value === '') {
         return null;
     }
-    return preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $value) ? $value : null;
+    try {
+        new DateTime($value);
+    } catch (Exception $e) {
+        return null;
+    }
+    return $value;
 }
 
 /**

@@ -4,3 +4,7 @@
 
 .DS_Store
 *.swp
+
+# Local dev/test tooling (fake-login helper, throwaway server, screenshots) -- never deployed,
+# never committed. See .devtools/README.md.
+/.devtools/

@@ -28,16 +28,32 @@ function hnh_download_slug(string $s): string
     return $slug !== '' ? strtolower($slug) : 'net';
 }
 
-function hnh_download_date(?string $iso): string
+/**
+ * Every timestamp this app stores is a UTC instant -- correct for storage/duration math, but
+ * meaningless to a human reader without converting to a real timezone first. The browser handles
+ * that automatically for on-screen display; this download runs server-side with no browser to
+ * ask, so it converts explicitly to the configured `timezone` (default 'UTC', README's config
+ * reference) before any formatting below. Returns null if $iso is empty/unparseable.
+ */
+function hnh_report_datetime(?string $iso): ?DateTime
 {
     if (!$iso) {
-        return 'undated';
+        return null;
     }
+    global $hnh_config;
     try {
-        return (new DateTime($iso))->format('Y-m-d');
+        $dt = new DateTime($iso);
     } catch (Exception $e) {
-        return 'undated';
+        return null;
     }
+    $dt->setTimezone(new DateTimeZone($hnh_config['timezone'] ?? 'UTC'));
+    return $dt;
+}
+
+function hnh_download_date(?string $iso): string
+{
+    $dt = hnh_report_datetime($iso);
+    return $dt ? $dt->format('Y-m-d') : 'undated';
 }
 
 function hnh_checkin_display_name(array $checkin): string
@@ -49,26 +65,14 @@ function hnh_checkin_display_name(array $checkin): string
 
 function hnh_report_date(?string $iso): string
 {
-    if (!$iso) {
-        return '';
-    }
-    try {
-        return (new DateTime($iso))->format('l, F j, Y');
-    } catch (Exception $e) {
-        return $iso;
-    }
+    $dt = hnh_report_datetime($iso);
+    return $dt ? $dt->format('l, F j, Y') : '';
 }
 
 function hnh_report_time(?string $iso): string
 {
-    if (!$iso) {
-        return '';
-    }
-    try {
-        return (new DateTime($iso))->format('g:i A');
-    } catch (Exception $e) {
-        return $iso;
-    }
+    $dt = hnh_report_datetime($iso);
+    return $dt ? $dt->format('g:i A') : '';
 }
 
 /**
@@ -137,36 +141,22 @@ function hnh_markdown_to_plain(string $markdown, int $wrapWidth = 80): string
 }
 
 /**
- * Resolves net.official_start ("HH:MM", no date -- see SPEC.md §5.6) to a concrete DateTime by
- * anchoring it to opened_at's calendar date, mirroring assets/js/net.js's computeAnchorMs()
- * exactly (including the midnight-rollover rule) so the report's Duration line always matches
- * what the live clock ribbon showed. Returns null if there's no official_start or opened_at to
- * anchor it to (Duration then falls back to elapsed-since-opened).
+ * Resolves net.official_start (a full ISO datetime -- SPEC.md §5.6) to a DateTime, mirroring
+ * assets/js/net.js's computeAnchorMs(). A self-contained absolute instant needs no calendar-day
+ * inference -- an earlier date-less "HH:MM" design needed to guess which day it meant from
+ * opened_at, which was a real, repeated source of Duration bugs (see SPEC.md §5.6's history).
+ * Returns null if unset/unparseable (Duration then falls back to elapsed-since-opened).
  */
-function hnh_official_start_anchor(?string $officialStart, ?string $openedAtIso): ?DateTime
+function hnh_official_start_anchor(?string $officialStart): ?DateTime
 {
-    if (!$officialStart || !$openedAtIso) {
+    if (!$officialStart) {
         return null;
     }
     try {
-        $opened = new DateTime($openedAtIso);
+        return new DateTime($officialStart);
     } catch (Exception $e) {
         return null;
     }
-    // opened_at's stored ISO string carries whatever UTC offset the server had at write time --
-    // not necessarily the app's configured timezone (`timezone` in hamnethelper-config.php, §2).
-    // official_start's "HH:MM" means wall-clock time in *that* configured timezone (the same
-    // local sense the browser uses for the live ribbon), so $opened must be normalized to it
-    // before reading/setting wall-clock components -- otherwise setTime() below sets the hour/
-    // minute in whatever offset happened to be baked into the stored string, silently producing a
-    // wrong instant (and, via the rollover check just after, potentially a wrong day too).
-    $opened->setTimezone(new DateTimeZone(date_default_timezone_get()));
-    [$h, $m] = array_map('intval', explode(':', $officialStart));
-    $anchor = (clone $opened)->setTime($h, $m, 0);
-    if ($anchor < $opened) {
-        $anchor->modify('+1 day');
-    }
-    return $anchor;
 }
 
 /** Signed "+/-HH:MM:SS", unbounded hours (a multi-day net can exceed 24h) -- see SPEC.md §5.6. */
@@ -223,13 +213,13 @@ switch ($format) {
             $lines[] = 'Frequency: ' . $net['frequency'];
         }
         if (!empty($net['official_start'])) {
-            $lines[] = 'Official Start: ' . $net['official_start'];
+            $lines[] = 'Official Start: ' . hnh_report_date($net['official_start']) . ', ' . hnh_report_time($net['official_start']);
         }
         $lines[] = 'Status: ' . ($net['status'] ?? 'open');
 
         // Same formula as the live Duration clock (assets/js/net.js): closed nets freeze at
         // ended_at, open nets use "now" (report generation time).
-        $anchor = hnh_official_start_anchor($net['official_start'] ?? null, $net['opened_at'] ?? null);
+        $anchor = hnh_official_start_anchor($net['official_start'] ?? null);
         $anchor = $anchor ?? (($net['opened_at'] ?? null) ? new DateTime($net['opened_at']) : null);
         if ($anchor !== null) {
             $end = (($net['status'] ?? 'open') === 'closed' && !empty($net['ended_at']))

@@ -21,6 +21,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 
   function openBlankForm() {
     form.reset();
+    // "Today" is the sensible default for the vast majority of nets (the ones being created
+    // right now, for a start time later the same day) -- the operator only needs to touch the
+    // date picker for the rarer case of prepping a net ahead of its actual date.
+    form.elements.official_start_date.value = HNH.todayDateInputValue();
     delete form.dataset.carryRoster;
     delete form.dataset.carryScriptNotes;
     dialog.showModal();
@@ -31,7 +35,11 @@ document.addEventListener('DOMContentLoaded', async function () {
     form.elements.name.value = net.name || '';
     form.elements.net_type.value = net.net_type || '';
     form.elements.net_control.value = net.net_control || '';
-    form.elements.official_start.value = net.official_start || '';
+    // Carries over the source net's official start *time* (a recurring weekly net keeps the same
+    // time-slot) but defaults the date to today, not the source net's original date -- this is a
+    // *new* occurrence, not the same one restored (see api/net_import.php for that case).
+    form.elements.official_start_date.value = HNH.todayDateInputValue();
+    form.elements.official_start_time.value = net.official_start ? HNH.formatTime(net.official_start) : '';
     form.elements.frequency.value = net.frequency || '';
     form.elements.description.value = net.description || '';
     form.elements.hamdat_zip.value = (net.hamdat_lookup && net.hamdat_lookup.zip) || '';
@@ -111,7 +119,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       name: fd.get('name'),
       net_type: fd.get('net_type'),
       net_control: fd.get('net_control'),
-      official_start: fd.get('official_start') || null,
+      official_start: HNH.combineDateAndTime(fd.get('official_start_date'), fd.get('official_start_time')),
       frequency: fd.get('frequency'),
       description: fd.get('description'),
       hamdat_lookup: {

@@ -75,6 +75,40 @@ HNH.formatTime = function (iso) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
+// "YYYY-MM-DD" in LOCAL time (not UTC -- toISOString().slice(0,10) would be off by one near
+// midnight in some timezones) -- the value format <input type="date"> expects/produces.
+HNH.formatDateForInput = function (input) {
+  var d = input instanceof Date ? input : new Date(input);
+  if (isNaN(d)) {
+    return '';
+  }
+  var mm = String(d.getMonth() + 1).padStart(2, '0');
+  var dd = String(d.getDate()).padStart(2, '0');
+  return d.getFullYear() + '-' + mm + '-' + dd;
+};
+
+HNH.todayDateInputValue = function () {
+  return HNH.formatDateForInput(new Date());
+};
+
+// Combines a <input type="date"> value ("YYYY-MM-DD") and a plain-text "HH:MM" time value into
+// a single ISO datetime string (official_start's storage format, SPEC.md §5.6) -- interpreted as
+// LOCAL time (the operator's own browser-local sense of "7pm"), same as everything else this app
+// treats as wall-clock time. Returns null if either half is missing/invalid, so an incomplete
+// edit never silently stores a garbage or partial value.
+HNH.combineDateAndTime = function (dateStr, timeStr) {
+  if (!dateStr || !/^([01][0-9]|2[0-3]):[0-5][0-9]$/.test(timeStr || '')) {
+    return null;
+  }
+  var dateParts = dateStr.split('-').map(Number);
+  var timeParts = timeStr.split(':').map(Number);
+  if (dateParts.length !== 3 || timeParts.length !== 2) {
+    return null;
+  }
+  var d = new Date(dateParts[0], dateParts[1] - 1, dateParts[2], timeParts[0], timeParts[1], 0, 0);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+};
+
 // Date only, no time -- used under the net-clocks ribbon's Opened/Closed values (small text).
 HNH.formatDateOnly = function (iso) {
   if (!iso) {

@@ -69,8 +69,12 @@ try {
       <input name="net_control" type="text">
     </label>
 
+    <label>Official start date (optional)
+      <input name="official_start_date" type="date">
+    </label>
+
     <label>Official start time (optional)
-      <input name="official_start" type="text" inputmode="numeric" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" placeholder="HH:MM" maxlength="5">
+      <input name="official_start_time" type="text" inputmode="numeric" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" placeholder="HH:MM" maxlength="5">
     </label>
 
     <label>Frequency

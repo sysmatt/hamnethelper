@@ -40,11 +40,12 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $netId)) {
         <span class="clock-label">Start</span>
         <button type="button" id="edit-official-start-btn" class="clock-edit-btn icon-btn"></button>
       </span>
-      <span class="clock-value-row">
+      <span id="clock-start-value-row" class="clock-value-row">
         <span id="clock-start-value" class="clock-value"></span>
-        <input type="text" id="clock-start-input" class="clock-edit-input" inputmode="numeric" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" placeholder="HH:MM" maxlength="5" hidden>
+        <input type="date" id="clock-start-date-input" class="clock-edit-input clock-edit-date-input" hidden>
+        <input type="text" id="clock-start-input" class="clock-edit-input clock-edit-time-input" inputmode="numeric" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" placeholder="HH:MM" maxlength="5" hidden>
       </span>
-      <span class="clock-date"></span>
+      <span id="clock-start-date" class="clock-date"></span>
     </div>
 
     <div class="clock">
