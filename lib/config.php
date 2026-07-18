@@ -17,6 +17,13 @@ function hnh_config(): array
     }
 
     $defaults = [
+        // Used to interpret official_start ("HH:MM", no date -- see SPEC.md §5.6) as a real
+        // wall-clock time consistently, regardless of what timezone PHP's own ini default happens
+        // to be. Without this, official_start's hour/minute could be misread against whatever
+        // offset happens to be baked into a stored opened_at timestamp, silently producing a wrong
+        // Duration (off by however many hours separate the server's default timezone from this
+        // one) -- set this to match wherever net control actually operates from.
+        'timezone' => 'UTC',
         'hamdat_bin' => '/usr/local/bin/hamdat',
         'hamdat_db' => null,
         'hamdat_temp_dir' => sys_get_temp_dir(),
@@ -59,6 +66,8 @@ function hnh_config(): array
     }
 
     $config = array_replace($defaults, $userConfig);
+
+    date_default_timezone_set($config['timezone']);
 
     return $config;
 }

@@ -153,6 +153,14 @@ function hnh_official_start_anchor(?string $officialStart, ?string $openedAtIso)
     } catch (Exception $e) {
         return null;
     }
+    // opened_at's stored ISO string carries whatever UTC offset the server had at write time --
+    // not necessarily the app's configured timezone (`timezone` in hamnethelper-config.php, §2).
+    // official_start's "HH:MM" means wall-clock time in *that* configured timezone (the same
+    // local sense the browser uses for the live ribbon), so $opened must be normalized to it
+    // before reading/setting wall-clock components -- otherwise setTime() below sets the hour/
+    // minute in whatever offset happened to be baked into the stored string, silently producing a
+    // wrong instant (and, via the rollover check just after, potentially a wrong day too).
+    $opened->setTimezone(new DateTimeZone(date_default_timezone_get()));
     [$h, $m] = array_map('intval', explode(':', $officialStart));
     $anchor = (clone $opened)->setTime($h, $m, 0);
     if ($anchor < $opened) {

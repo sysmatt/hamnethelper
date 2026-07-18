@@ -508,6 +508,23 @@ line rather than cramming or scrolling.
   identically in both `assets/js/net.js` (`computeAnchorMs()`, for the live ribbon) and
   `api/net_download.php` (`hnh_official_start_anchor()`, for the report, §6) so the two can never
   disagree with each other.
+
+  **Timezone matters here.** `official_start`'s "HH:MM" means wall-clock time in the operator's
+  own local sense — the live ribbon (`computeAnchorMs()`) reads it against the *browser's* local
+  timezone, which is correct for whoever's actually looking at the screen. The report is generated
+  server-side, though, where there's no browser to ask — `hnh_official_start_anchor()` instead
+  normalizes `opened_at` to the app's configured `timezone` (`hamnethelper-config.php`, README's
+  config reference) before doing the same wall-clock math, rather than whatever offset happened to
+  be baked into the stored `opened_at` string (which just reflects the server's timezone *at
+  write time*, and could be UTC, could be anything). Set `timezone` to match wherever net control
+  actually operates from — a mismatch between that config and the operators' real timezone throws
+  the report's Duration off by however many hours (or, if the resulting anchor lands on the wrong
+  side of `opened_at`, triggers the midnight-rollover above unnecessarily, throwing it off by
+  closer to a full day). Confirmed as a real bug, not theoretical: reproduced a ~19-hour-wrong
+  report Duration on a test net that had only been open one minute, root-caused to exactly this —
+  server's PHP default timezone was UTC while the browser/OS were America/New_York, so "14:35" got
+  read as 14:35 UTC instead of 14:35 local, and the resulting (wrong) anchor ended up before
+  `opened_at`, triggering an unwanted day-rollover on top of the base offset.
 - **Closed** only appears once the net is closed, showing `ended_at`.
 
 `official_start` and the computed `Duration` (same formula, frozen/live the same way, generated at

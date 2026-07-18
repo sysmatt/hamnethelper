@@ -432,6 +432,17 @@ body.net-closed .script-notes-panel {
 .checkin-panel {
   flex: 1;
   min-width: 0;
+}
+
+/* Scoped to just the table, not the whole .checkin-panel -- setting overflow-x here used to sit
+   on .checkin-panel itself, but CSS silently turns an unset overflow-y into "auto" as soon as
+   overflow-x isn't "visible" on the same box (spec behavior, not a browser bug). That trapped
+   .lookup-wrap's absolutely-positioned .suggestions dropdown (a sibling of this table, inside the
+   same .checkin-panel) inside .checkin-panel's own scroll box -- clipping/scrolling it internally
+   instead of letting it overlay the page, worst right after opening a net with zero check-ins
+   (when the panel's natural content height is shortest). Scoping the scroll to just this wrapper
+   keeps the wide-table horizontal scroll behavior without dragging the dropdown into it. */
+.table-scroll {
   overflow-x: auto;
 }
 

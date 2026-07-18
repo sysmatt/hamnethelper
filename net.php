@@ -105,22 +105,24 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $netId)) {
         <button id="hamdat-settings-btn" type="button">HAMDAT Lookup settings</button>
       </div>
 
-      <table id="checkin-table" class="data-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Callsign</th>
-            <th>Name</th>
-            <th>City</th>
-            <th>State</th>
-            <th>Check-in</th>
-            <th>Check-out</th>
-            <th class="notes-col">Notes</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
+      <div class="table-scroll">
+        <table id="checkin-table" class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Callsign</th>
+              <th>Name</th>
+              <th>City</th>
+              <th>State</th>
+              <th>Check-in</th>
+              <th>Check-out</th>
+              <th class="notes-col">Notes</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
       <p id="lookup-status" class="lookup-status"></p>
     </section>
   </div>

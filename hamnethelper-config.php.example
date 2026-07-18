@@ -10,6 +10,16 @@
 
 return [
 
+    // --- Timezone --------------------------------------------------------------------------
+
+    // Used to interpret official_start ("HH:MM", no date, SPEC.md §5.6) as a real wall-clock
+    // moment consistently, regardless of what timezone PHP's own ini default happens to be. Set
+    // this to wherever net control actually operates from -- a mismatch here silently throws off
+    // the Duration clock/report by however many hours separate the two timezones. Any valid PHP
+    // timezone identifier (see https://www.php.net/manual/en/timezones.php), e.g.
+    // 'America/New_York', 'America/Chicago', 'Europe/London'.
+    'timezone' => 'America/New_York',
+
     // --- Paths & hamdat integration -----------------------------------------------------------
 
     // Full path to the hamdat binary (used for the second-level lookup, see SPEC.md §3.3)
