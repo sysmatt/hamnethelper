@@ -105,6 +105,8 @@ save wins — acceptable for this workflow.
   "net_type": "weekly",
   "created_at": "2026-07-16T18:30:00-05:00",
   "updated_at": "2026-07-16T20:05:12-05:00",
+  "opened_at": "2026-07-16T18:28:40-05:00",
+  "official_start": "19:00",
   "ended_at": null,
   "net_control": "K1ABC",
   "frequency": "146.940 MHz -0.6 PL 100.0",
@@ -162,6 +164,17 @@ Field notes:
 - `name` is the value as returned by the roster/hamdat lookup (or typed raw if no match) — never
   edited in place. `preferred_name` is an optional operator override (nickname/preferred name);
   `null` until set. Display logic composes them — see §5.2.
+- `opened_at` is a full timestamp, distinct from `created_at` — deliberately so, since
+  `created_at` is used elsewhere for identity/filenames and must stay immutable, whereas
+  `opened_at` is meant to be operator-resettable (e.g. a net pre-created ahead of time, but
+  check-ins didn't actually start until later). Defaults to `created_at` at creation time; nets
+  written before this field existed fall back to `created_at` on read (`hnh_read_net()`) rather
+  than requiring an on-disk migration. See §5.6.
+- `official_start` is `"HH:MM"` (24h), no date component — some nets run for a fixed weekly
+  time-slot regardless of what date they land on, others run long enough or start early enough
+  that a bound date wouldn't mean anything useful. `null` if not set. See §5.6 for how it's
+  resolved to an actual moment in time (it needs a calendar date from somewhere to be compared
+  against "now").
 
 ### 3.2 Level-1 cache (browser)
 
@@ -234,15 +247,17 @@ Per-row actions:
   name (a weekly net run under the same title every week) would otherwise all download to
   indistinguishable filenames.
 - **Start new net like this one** (🔁 icon) — opens the same creation form used by **Begin New Net** (below),
-  pre-filled with: name, net_type, frequency, description, net_control, hamdat zip/radius, roster,
-  and `script_notes`. The operator can edit any field before submitting — nothing is created until
+  pre-filled with: name, net_type, frequency, description, net_control, official start time, hamdat
+  zip/radius, roster, and `script_notes`. The operator can edit any field before submitting — nothing is created until
   they confirm. On submit: fresh `checkins: []`, new `id`, new `created_at`, `status: "open"`,
   `ended_at: null`, and a fresh (empty) `hamdat_lookup.cached_results` — the zip/radius carries over
   but the cache itself is not copied; if the zip is still filled in, submitting re-runs the lookup
   immediately (see below) rather than requiring a separate trip into Lookup Settings.
 
 Page-level action: **Begin New Net** — opens a blank version of the same creation form (name,
-net_type, net control, frequency, description, hamdat zip/radius) and creates the file on submit.
+net_type, net control, official start time, frequency, description, hamdat zip/radius) and creates
+the file on submit. Official start time is optional (`<input type="time">`, "HH:MM" 24h, no date —
+see §5.6) — a net with a fixed weekly time-slot fills it in, a purely ad-hoc net leaves it blank.
 
 Page-level action: **Import Net** — restores a previously-downloaded JSON backup (the "Download
 JSON backup" link above) as a new net. File picker → read client-side → `POST api/net_import.php`
@@ -440,6 +455,57 @@ On the net list (Screen 1), a closed net still shows **Open/Resume**, which land
 `net.php` view — closed just means it opens already grayed out, with **Re-open Net** one click
 away.
 
+### 5.6 Net-clocks ribbon
+
+Four small clocks live in the header, between the net name and the Saved indicator/Close-Net/
+Theme buttons — abbreviated labels (**Start · Open · Dur · Closed**) to keep the ribbon compact,
+each showing a big `HH:MM` (24h) value with a small date underneath, except **Start** (no date —
+it's a dateless field, showing a date under it would misleadingly imply otherwise) and **Duration**
+(an offset, not a point in time). On a window too narrow to fit the whole header on one line, it
+wraps to a second line rather than cramming or scrolling.
+
+- **Start** shows `official_start` if set, static, with a small pencil-edit affordance (same
+  interaction as the preferred-name edit, §5.2) that turns it into an inline `<input type="time">`
+  — Enter or blur commits, Escape cancels without saving. If no `official_start` is set yet, the
+  edit affordance shows as "+" instead of a pencil, so one can be added at any time, not just at
+  net creation. Editing is disabled while the net is closed, consistent with the rest of the
+  workspace lockout (§5.5).
+- **Open** shows `opened_at`, with a small "reset" button (↺, `title="Reset Opened time to now"`)
+  that sets `opened_at` to the current moment — for a net pre-created ahead of time where check-ins
+  didn't actually start until later. Also disabled while closed.
+- **Duration** is a live `±HH:MM:SS` count-up/count-down timer, the only clock that shows seconds,
+  ticking once per second while the net is open. The sign is what actually encodes count-down vs
+  count-up — there's a single formula, not two separate code paths:
+
+  ```
+  anchor = official_start resolved to a real datetime (see below), or opened_at if unset
+  duration = (ended_at if closed, else now) − anchor
+  ```
+
+  Negative (`-HH:MM:SS`) reads as "counting down to official start"; positive (`+HH:MM:SS`) reads
+  as "elapsed since official start" (or, with no `official_start` set, simply elapsed since
+  `opened_at` — always counting up in that case, per the formula above). Hours are **unbounded**,
+  not wrapped at 24 (`+30:15:22` for a multi-day net), since some nets legitimately run that long.
+  **Freezes at its final value once the net is closed** — stops ticking, computed once against
+  `ended_at` rather than live wall-clock time, so it doesn't keep counting up after the net (and the
+  static Closed clock next to it) says otherwise. Resumes live ticking immediately on Re-open.
+
+  Resolving `official_start` (`"HH:MM"`, no date) to a comparable datetime requires anchoring it to
+  some calendar day — the chosen day is `opened_at`'s. This is naturally correct for the common
+  case (net opened a bit before its same-day official start), but has one edge case worth spelling
+  out: a net opened just before midnight for an official start just after midnight (e.g. opened
+  23:50, `official_start` "00:15") would, anchored naively to the *same* calendar day, put the
+  anchor *before* `opened_at` — Duration would immediately read as "~24h already elapsed," which is
+  backwards (the real start is 25 minutes away, not a day in the past). Fixed by rolling the anchor
+  forward one calendar day whenever the same-day anchor would fall before `opened_at` — implemented
+  identically in both `assets/js/net.js` (`computeAnchorMs()`, for the live ribbon) and
+  `api/net_download.php` (`hnh_official_start_anchor()`, for the report, §6) so the two can never
+  disagree with each other.
+- **Closed** only appears once the net is closed, showing `ended_at`.
+
+`official_start` and the computed `Duration` (same formula, frozen/live the same way, generated at
+download time) are included in the plain-text **Report** header — see §6/§4.
+
 ---
 
 ## 6. API (all under `api/`, JSON in/out, all behind the session check in `api/_bootstrap.php`)
@@ -453,7 +519,7 @@ away.
 | `api/net_get.php?id=` | GET | Fetch full net JSON |
 | `api/net_save.php` | POST | Merge-and-overwrite a net's JSON (autosave target); `id`/`created_at` are server-authoritative, `updated_at` always recomputed |
 | `api/net_delete.php?id=` | POST | Delete a net file |
-| `api/net_download.php?id=&format=csv\|json\|report[&notes=1]` | GET | Stream a download — `report` omits per-check-in notes unless `notes=1` is also given (§4) |
+| `api/net_download.php?id=&format=csv\|json\|report[&notes=1]` | GET | Stream a download — `report` omits per-check-in notes unless `notes=1` is also given (§4), and includes `official_start`/`Duration` in its header, computed at generation time (§5.6) |
 | `api/hamdat_lookup.php` | POST | `{zip, radius_miles}` → hamdat CLI query → `{results: [{callsign,name,city,state}]}` |
 
 This is the actual, implemented API — not a proposal. `lib/hamdat.php` holds the shared hamdat CLI
@@ -487,6 +553,10 @@ logic exists in exactly one place.
 - Uploaded roster files: size-limited, parsed as plain text, one token per line, loosely validated
   as callsign-shaped (not strictly enforced — partial/garbage entries just won't match anything
   useful).
+- `official_start` is validated against a strict `HH:MM` (24h) pattern server-side
+  (`hnh_valid_official_start()` in `lib/net_store.php`) on every write path (create, autosave,
+  import) — anything else, including empty string, normalizes to "not set" rather than being
+  rejected outright.
 - Imported net JSON backups (`api/net_import.php`) are merged over a full-shape skeleton rather
   than trusted wholesale, so a hand-edited or partially-missing backup can't produce a
   structurally invalid net file — and identity fields (`id`/`created_at`/`updated_at`) are always

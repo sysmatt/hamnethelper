@@ -31,6 +31,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     form.elements.name.value = net.name || '';
     form.elements.net_type.value = net.net_type || '';
     form.elements.net_control.value = net.net_control || '';
+    form.elements.official_start.value = net.official_start || '';
     form.elements.frequency.value = net.frequency || '';
     form.elements.description.value = net.description || '';
     form.elements.hamdat_zip.value = (net.hamdat_lookup && net.hamdat_lookup.zip) || '';
@@ -110,6 +111,7 @@ document.addEventListener('DOMContentLoaded', async function () {
       name: fd.get('name'),
       net_type: fd.get('net_type'),
       net_control: fd.get('net_control'),
+      official_start: fd.get('official_start') || null,
       frequency: fd.get('frequency'),
       description: fd.get('description'),
       hamdat_lookup: {

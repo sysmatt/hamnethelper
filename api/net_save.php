@@ -24,6 +24,7 @@ $net = array_replace($existing, $input);
 $net['id'] = $existing['id'];
 $net['created_at'] = $existing['created_at'];
 $net['updated_at'] = date('c');
+$net['official_start'] = hnh_valid_official_start($net['official_start'] ?? null);
 
 try {
     hnh_write_net($net);

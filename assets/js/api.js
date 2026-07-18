@@ -75,6 +75,18 @@ HNH.formatTime = function (iso) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
 };
 
+// Date only, no time -- used under the net-clocks ribbon's Opened/Closed values (small text).
+HNH.formatDateOnly = function (iso) {
+  if (!iso) {
+    return '';
+  }
+  var d = new Date(iso);
+  if (isNaN(d)) {
+    return '';
+  }
+  return d.toLocaleDateString([], { year: 'numeric', month: 'numeric', day: 'numeric' });
+};
+
 HNH.formatDateTime = function (iso) {
   if (!iso) {
     return '';

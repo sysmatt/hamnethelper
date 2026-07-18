@@ -69,6 +69,10 @@ try {
       <input name="net_control" type="text">
     </label>
 
+    <label>Official start time (optional)
+      <input name="official_start" type="time">
+    </label>
+
     <label>Frequency
       <input name="frequency" type="text" placeholder="e.g. 146.940 MHz -0.6 PL 100.0">
     </label>

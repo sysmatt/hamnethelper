@@ -12,6 +12,17 @@ document.addEventListener('DOMContentLoaded', async function () {
   var uploadBtn = document.getElementById('upload-roster-btn');
   var uploadInput = document.getElementById('roster-file-input');
 
+  var clockStartValue = document.getElementById('clock-start-value');
+  var clockStartInput = document.getElementById('clock-start-input');
+  var editStartBtn = document.getElementById('edit-official-start-btn');
+  var clockOpenValue = document.getElementById('clock-open-value');
+  var clockOpenDate = document.getElementById('clock-open-date');
+  var resetOpenedBtn = document.getElementById('reset-opened-btn');
+  var clockDurationValue = document.getElementById('clock-duration-value');
+  var clockClosedEl = document.getElementById('clock-closed');
+  var clockClosedValue = document.getElementById('clock-closed-value');
+  var clockClosedDate = document.getElementById('clock-closed-date');
+
   var hamdatBtn = document.getElementById('hamdat-settings-btn');
   var hamdatDialog = document.getElementById('hamdat-dialog');
   var hamdatZip = document.getElementById('hamdat-zip');
@@ -36,6 +47,7 @@ document.addEventListener('DOMContentLoaded', async function () {
   // object reference rather than row index: index shifts under delete/reorder, a reference to
   // the actual checkin object doesn't, so the highlight survives those without extra bookkeeping.
   var currentCheckin = null;
+  var durationInterval = null;
 
   // --- Autosave (SPEC.md §2) -----------------------------------------------------------------
 
@@ -115,6 +127,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     hamdatRadius.value = (net.hamdat_lookup && net.hamdat_lookup.radius_miles) || '';
     renderHamdatRefreshedLabel();
 
+    renderClocks();
     renderCheckins();
   }
 
@@ -124,6 +137,146 @@ document.addEventListener('DOMContentLoaded', async function () {
       ? 'Last refreshed: ' + HNH.formatDateTime(ts)
       : 'Not loaded yet.';
   }
+
+  // --- Net-clocks ribbon: Official Start / Opened / Duration / Closed (SPEC.md §5.6) --------
+  //
+  // Official Start (net.official_start, "HH:MM", no date) and Opened (net.opened_at, a full
+  // timestamp distinct from created_at -- created_at is used elsewhere for identity/filenames
+  // and must stay immutable, whereas opened_at is meant to be operator-resettable) only change
+  // via explicit edit/reset actions, so renderClocks() is called from render() (on load and
+  // whenever net data changes) -- never on the once-a-second Duration tick, so an in-progress
+  // Official Start edit is never clobbered mid-keystroke.
+
+  function computeAnchorMs() {
+    var openedMs = net.opened_at ? new Date(net.opened_at).getTime() : null;
+    if (openedMs === null || isNaN(openedMs) || !net.official_start) {
+      return openedMs; // no official start set -> Duration is always elapsed-since-opened
+    }
+    var parts = net.official_start.split(':');
+    var opened = new Date(openedMs);
+    var anchor = new Date(
+      opened.getFullYear(), opened.getMonth(), opened.getDate(),
+      Number(parts[0]), Number(parts[1]), 0, 0
+    ).getTime();
+    // If the same-day anchor falls before opened_at (e.g. opened 23:50, official start "00:15"),
+    // treat it as the next calendar day's occurrence instead -- otherwise Duration would read as
+    // already ~24h elapsed the instant the net opens, instead of counting down the ~25 minutes
+    // actually remaining.
+    if (anchor < openedMs) {
+      anchor += 24 * 60 * 60 * 1000;
+    }
+    return anchor;
+  }
+
+  function formatDurationMs(ms) {
+    var sign = ms < 0 ? '−' : '+';
+    var totalSeconds = Math.floor(Math.abs(ms) / 1000);
+    var hh = Math.floor(totalSeconds / 3600);
+    var mm = Math.floor((totalSeconds % 3600) / 60);
+    var ss = totalSeconds % 60;
+    function pad(n) { return String(n).padStart(2, '0'); }
+    return sign + pad(hh) + ':' + pad(mm) + ':' + pad(ss);
+  }
+
+  function tickDuration() {
+    var anchor = computeAnchorMs();
+    if (anchor === null) {
+      clockDurationValue.textContent = '—';
+      return;
+    }
+    var endMs = (net.status === 'closed' && net.ended_at)
+      ? new Date(net.ended_at).getTime()
+      : Date.now();
+    clockDurationValue.textContent = formatDurationMs(endMs - anchor);
+  }
+
+  // Ticks live once/second while the net is open; frozen at its final value once closed (a
+  // fresh tick still runs once so the freeze reflects ended_at immediately, it just isn't
+  // re-scheduled).
+  function startDurationTimer() {
+    clearInterval(durationInterval);
+    tickDuration();
+    if (net.status !== 'closed') {
+      durationInterval = setInterval(tickDuration, 1000);
+    }
+  }
+
+  function renderClocks() {
+    var closed = net.status === 'closed';
+
+    if (net.official_start) {
+      clockStartValue.textContent = net.official_start;
+      editStartBtn.textContent = '✏️';
+      editStartBtn.title = 'Edit official start time';
+    } else {
+      clockStartValue.textContent = '—';
+      editStartBtn.textContent = '+';
+      editStartBtn.title = 'Set official start time';
+    }
+    editStartBtn.setAttribute('aria-label', editStartBtn.title);
+    editStartBtn.disabled = closed;
+    clockStartValue.hidden = false;
+    clockStartInput.hidden = true;
+
+    clockOpenValue.textContent = HNH.formatTime(net.opened_at);
+    clockOpenDate.textContent = HNH.formatDateOnly(net.opened_at);
+    resetOpenedBtn.disabled = closed;
+
+    if (closed && net.ended_at) {
+      clockClosedEl.hidden = false;
+      clockClosedValue.textContent = HNH.formatTime(net.ended_at);
+      clockClosedDate.textContent = HNH.formatDateOnly(net.ended_at);
+    } else {
+      clockClosedEl.hidden = true;
+    }
+
+    startDurationTimer();
+  }
+
+  resetOpenedBtn.addEventListener('click', function () {
+    net.opened_at = new Date().toISOString();
+    renderClocks();
+    scheduleSave();
+  });
+
+  editStartBtn.addEventListener('click', function () {
+    if (editStartBtn.disabled) {
+      return;
+    }
+    clockStartValue.hidden = true;
+    editStartBtn.hidden = true;
+    clockStartInput.value = net.official_start || '';
+    clockStartInput.hidden = false;
+    clockStartInput.focus();
+  });
+
+  var cancelingStartEdit = false;
+
+  function commitOfficialStart() {
+    if (cancelingStartEdit) {
+      cancelingStartEdit = false;
+      return;
+    }
+    editStartBtn.hidden = false;
+    net.official_start = clockStartInput.value || null;
+    renderClocks();
+    scheduleSave();
+  }
+
+  clockStartInput.addEventListener('blur', commitOfficialStart);
+  clockStartInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      clockStartInput.blur();
+    } else if (e.key === 'Escape') {
+      // Hiding the input triggers its own `blur` (a hidden/display:none element can't hold
+      // focus) -- this flag stops that blur from committing the in-progress (unwanted) edit.
+      cancelingStartEdit = true;
+      clockStartInput.hidden = true;
+      editStartBtn.hidden = false;
+      clockStartValue.hidden = false;
+    }
+  });
 
   function renderCheckins() {
     checkinTbody.innerHTML = '';

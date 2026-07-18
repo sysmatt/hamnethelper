@@ -34,7 +34,31 @@ function hnh_read_net(string $id): ?array
         return null;
     }
     $data = json_decode((string) file_get_contents($path), true);
-    return is_array($data) ? $data : null;
+    if (!is_array($data)) {
+        return null;
+    }
+
+    // Nets created before the Official Start / clock ribbon feature won't have these keys on
+    // disk -- default opened_at to created_at (the best available approximation of "when the
+    // net was opened") and leave official_start unset, rather than requiring a one-time
+    // migration of existing net files.
+    if (empty($data['opened_at'])) {
+        $data['opened_at'] = $data['created_at'] ?? null;
+    }
+    if (!array_key_exists('official_start', $data)) {
+        $data['official_start'] = null;
+    }
+
+    return $data;
+}
+
+/** Validates "HH:MM" (24h). Anything else -- including null/empty -- normalizes to null (no official start set). */
+function hnh_valid_official_start(?string $value): ?string
+{
+    if ($value === null || $value === '') {
+        return null;
+    }
+    return preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $value) ? $value : null;
 }
 
 /**
@@ -126,6 +150,8 @@ function hnh_new_net(array $fields): array
         'net_type' => $fields['net_type'] ?? '',
         'created_at' => $now,
         'updated_at' => $now,
+        'opened_at' => $now,
+        'official_start' => hnh_valid_official_start($fields['official_start'] ?? null),
         'ended_at' => null,
         'net_control' => $fields['net_control'] ?? '',
         'frequency' => $fields['frequency'] ?? '',
@@ -169,6 +195,8 @@ function hnh_import_net(array $uploaded): array
         'description' => '',
         'status' => 'open',
         'ended_at' => null,
+        'opened_at' => null,
+        'official_start' => null,
         'script_notes' => '',
         'hamdat_lookup' => [
             'zip' => '',
@@ -195,6 +223,14 @@ function hnh_import_net(array $uploaded): array
     $net['id'] = hnh_uuid_v4();
     $net['created_at'] = $now;
     $net['updated_at'] = $now;
+
+    // opened_at/official_start are operational data, not identity -- preserved from the backup
+    // like checkins/status/script_notes are. A backup predating this feature (or missing the
+    // key) falls back to the fresh created_at, same as hnh_read_net()'s migration path.
+    if (empty($net['opened_at'])) {
+        $net['opened_at'] = $now;
+    }
+    $net['official_start'] = hnh_valid_official_start($net['official_start'] ?? null);
 
     return $net;
 }

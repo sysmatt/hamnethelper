@@ -136,6 +136,42 @@ function hnh_markdown_to_plain(string $markdown, int $wrapWidth = 80): string
     return implode("\n", $wrapped);
 }
 
+/**
+ * Resolves net.official_start ("HH:MM", no date -- see SPEC.md §5.6) to a concrete DateTime by
+ * anchoring it to opened_at's calendar date, mirroring assets/js/net.js's computeAnchorMs()
+ * exactly (including the midnight-rollover rule) so the report's Duration line always matches
+ * what the live clock ribbon showed. Returns null if there's no official_start or opened_at to
+ * anchor it to (Duration then falls back to elapsed-since-opened).
+ */
+function hnh_official_start_anchor(?string $officialStart, ?string $openedAtIso): ?DateTime
+{
+    if (!$officialStart || !$openedAtIso) {
+        return null;
+    }
+    try {
+        $opened = new DateTime($openedAtIso);
+    } catch (Exception $e) {
+        return null;
+    }
+    [$h, $m] = array_map('intval', explode(':', $officialStart));
+    $anchor = (clone $opened)->setTime($h, $m, 0);
+    if ($anchor < $opened) {
+        $anchor->modify('+1 day');
+    }
+    return $anchor;
+}
+
+/** Signed "+/-HH:MM:SS", unbounded hours (a multi-day net can exceed 24h) -- see SPEC.md §5.6. */
+function hnh_format_duration(int $signedSeconds): string
+{
+    $sign = $signedSeconds < 0 ? '-' : '+';
+    $abs = abs($signedSeconds);
+    $h = intdiv($abs, 3600);
+    $m = intdiv($abs % 3600, 60);
+    $s = $abs % 60;
+    return sprintf('%s%02d:%02d:%02d', $sign, $h, $m, $s);
+}
+
 $baseName = hnh_download_slug($net['name'] ?? 'net') . '-' . hnh_download_date($net['created_at'] ?? null);
 
 switch ($format) {
@@ -178,7 +214,22 @@ switch ($format) {
         if (!empty($net['frequency'])) {
             $lines[] = 'Frequency: ' . $net['frequency'];
         }
+        if (!empty($net['official_start'])) {
+            $lines[] = 'Official Start: ' . $net['official_start'];
+        }
         $lines[] = 'Status: ' . ($net['status'] ?? 'open');
+
+        // Same formula as the live Duration clock (assets/js/net.js): closed nets freeze at
+        // ended_at, open nets use "now" (report generation time).
+        $anchor = hnh_official_start_anchor($net['official_start'] ?? null, $net['opened_at'] ?? null);
+        $anchor = $anchor ?? (($net['opened_at'] ?? null) ? new DateTime($net['opened_at']) : null);
+        if ($anchor !== null) {
+            $end = (($net['status'] ?? 'open') === 'closed' && !empty($net['ended_at']))
+                ? new DateTime($net['ended_at'])
+                : new DateTime();
+            $lines[] = 'Duration: ' . hnh_format_duration($end->getTimestamp() - $anchor->getTimestamp());
+        }
+
         $lines[] = '';
 
         if (trim($net['script_notes'] ?? '') !== '') {

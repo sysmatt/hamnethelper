@@ -31,6 +31,34 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $netId)) {
 <header class="app-header">
   <a class="back-link" href="index.php">&larr; Net List</a>
   <h1 id="net-name">Loading&hellip;</h1>
+
+  <div id="net-clocks" class="net-clocks">
+    <div id="clock-start" class="clock">
+      <span class="clock-label">Start</span>
+      <span id="clock-start-value" class="clock-value"></span>
+      <input type="time" id="clock-start-input" class="clock-edit-input" hidden>
+      <button type="button" id="edit-official-start-btn" class="clock-edit-btn icon-btn"></button>
+    </div>
+
+    <div class="clock">
+      <span class="clock-label">Open</span>
+      <span id="clock-open-value" class="clock-value"></span>
+      <span id="clock-open-date" class="clock-date"></span>
+      <button type="button" id="reset-opened-btn" class="clock-edit-btn icon-btn" title="Reset Opened time to now" aria-label="Reset Opened time to now">&#8635;</button>
+    </div>
+
+    <div class="clock">
+      <span class="clock-label">Dur</span>
+      <span id="clock-duration-value" class="clock-value clock-mono"></span>
+    </div>
+
+    <div id="clock-closed" class="clock" hidden>
+      <span class="clock-label">Closed</span>
+      <span id="clock-closed-value" class="clock-value"></span>
+      <span id="clock-closed-date" class="clock-date"></span>
+    </div>
+  </div>
+
   <div class="header-actions">
     <span id="save-indicator" class="save-indicator">&mdash;</span>
     <button id="close-reopen-btn" type="button">Close Net</button>
