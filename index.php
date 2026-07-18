@@ -70,7 +70,7 @@ try {
     </label>
 
     <label>Official start time (optional)
-      <input name="official_start" type="time">
+      <input name="official_start" type="text" inputmode="numeric" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" placeholder="HH:MM" maxlength="5">
     </label>
 
     <label>Frequency

@@ -256,8 +256,12 @@ Per-row actions:
 
 Page-level action: **Begin New Net** — opens a blank version of the same creation form (name,
 net_type, net control, official start time, frequency, description, hamdat zip/radius) and creates
-the file on submit. Official start time is optional (`<input type="time">`, "HH:MM" 24h, no date —
+the file on submit. Official start time is optional (a plain `HH:MM` text field, 24h, no date —
 see §5.6) — a net with a fixed weekly time-slot fills it in, a purely ad-hoc net leaves it blank.
+Deliberately not a native `<input type="time">`: that control's displayed format (12h with AM/PM,
+or 24h) follows the browser/OS locale, not anything the page can control, so it can't guarantee
+consistent 24h display the way the rest of the app does (`HNH.formatTime()`, §5.1) — a plain text
+field with a validated `HH:MM` pattern always shows exactly what's typed, no locale involved.
 
 Page-level action: **Import Net** — restores a previously-downloaded JSON backup (the "Download
 JSON backup" link above) as a new net. File picker → read client-side → `POST api/net_import.php`
@@ -465,8 +469,9 @@ it's a dateless field, showing a date under it would misleadingly imply otherwis
 wraps to a second line rather than cramming or scrolling.
 
 - **Start** shows `official_start` if set, static, with a small pencil-edit affordance (same
-  interaction as the preferred-name edit, §5.2) that turns it into an inline `<input type="time">`
-  — Enter or blur commits, Escape cancels without saving. If no `official_start` is set yet, the
+  interaction as the preferred-name edit, §5.2) that turns it into an inline `HH:MM` text field
+  (not a native `<input type="time">` — see §4 for why) — Enter or blur commits, Escape cancels
+  without saving. If no `official_start` is set yet, the
   edit affordance shows as "+" instead of a pencil, so one can be added at any time, not just at
   net creation. Editing is disabled while the net is closed, consistent with the rest of the
   workspace lockout (§5.5).

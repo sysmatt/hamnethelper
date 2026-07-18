@@ -33,37 +33,44 @@ body {
   color: var(--text);
 }
 
+/* Grid, not flex: a 3-column "1fr auto 1fr" layout keeps the middle column (net-clocks) pinned to
+   the true horizontal center at a fixed width, regardless of how wide the left (back-link+name)
+   or right (save-indicator+buttons) content is. Flex couldn't do this -- with both outer groups
+   flex-growing to fill space, the center group's position shifted sideways every time the
+   save-indicator's text changed length (e.g. "Saved" vs "Save failed — click to retry"), since
+   that changes how much space the two sides have left to compete for. With matching 1fr tracks,
+   the two sides always get an equal, symmetric share of the remaining space instead, so the
+   center track's position never moves. */
 .app-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 1rem;
-  flex-wrap: wrap;
   padding: 0.75rem 1.25rem;
   background: var(--bg-elevated);
   border-bottom: 1px solid var(--border);
 }
 
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  min-width: 0;
+}
+
 .app-header h1 {
   font-size: 1.1rem;
   margin: 0;
-  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* The clock ribbon is one flex item in .app-header -- on a narrow window, flex-wrap moves the
-   whole group down to its own line together rather than splitting individual clocks awkwardly
-   across two rows. */
 .net-clocks {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
-  flex: 1 1 auto;
-  justify-content: center;
-  flex-wrap: wrap;
+  gap: 1.75rem;
 }
 
 .clock {
@@ -71,8 +78,8 @@ body {
   flex-direction: column;
   align-items: center;
   position: relative;
-  line-height: 1.2;
-  min-width: 3.6rem;
+  line-height: 1.25;
+  min-width: 4.5rem;
 }
 
 /* `.clock` sets `display: flex`, which ties with the browser's own `[hidden] { display: none }`
@@ -83,7 +90,7 @@ body {
 }
 
 .clock-label {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -91,7 +98,7 @@ body {
 }
 
 .clock-value {
-  font-size: 1rem;
+  font-size: 1.6rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -101,15 +108,15 @@ body {
 }
 
 .clock-date {
-  font-size: 0.65rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
 }
 
 .clock-edit-btn {
   position: absolute;
-  top: -0.35rem;
-  right: -0.9rem;
-  font-size: 0.7rem;
+  top: -0.3rem;
+  right: -1rem;
+  font-size: 0.75rem;
   opacity: 0.7;
 }
 
@@ -141,7 +148,33 @@ body {
 .header-actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 0.75rem;
+  min-width: 0;
+  /* Pins this to the grid's last column even on pages like index.php whose header has only two
+     children (h1 + header-actions, no back-link/net-clocks) -- without this it would land in the
+     middle (auto) column instead of the right edge, since grid auto-placement just fills columns
+     in source order. The middle column then collapses to 0 width on those pages (nothing else
+     occupies it), leaving h1 and header-actions at opposite edges same as before. */
+  grid-column: 3;
+}
+
+/* Below this width, the 3-column grid can't fit back-link+name, all four clocks, and the
+   save-indicator/buttons on one line without cramping -- stack them as full-width rows instead. */
+@media (max-width: 900px) {
+  .app-header {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .header-left,
+  .header-actions {
+    justify-content: center;
+  }
+  .net-clocks {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
 }
 
 .user-label,

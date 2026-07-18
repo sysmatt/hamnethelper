@@ -29,14 +29,16 @@ if (!preg_match('/^[a-zA-Z0-9_-]{1,64}$/', $netId)) {
 <body data-net-id="<?= htmlspecialchars($netId) ?>">
 
 <header class="app-header">
-  <a class="back-link" href="index.php">&larr; Net List</a>
-  <h1 id="net-name">Loading&hellip;</h1>
+  <div class="header-left">
+    <a class="back-link" href="index.php">&larr; Net List</a>
+    <h1 id="net-name">Loading&hellip;</h1>
+  </div>
 
   <div id="net-clocks" class="net-clocks">
     <div id="clock-start" class="clock">
       <span class="clock-label">Start</span>
       <span id="clock-start-value" class="clock-value"></span>
-      <input type="time" id="clock-start-input" class="clock-edit-input" hidden>
+      <input type="text" id="clock-start-input" class="clock-edit-input" inputmode="numeric" pattern="([01][0-9]|2[0-3]):[0-5][0-9]" placeholder="HH:MM" maxlength="5" hidden>
       <button type="button" id="edit-official-start-btn" class="clock-edit-btn icon-btn"></button>
     </div>
 
